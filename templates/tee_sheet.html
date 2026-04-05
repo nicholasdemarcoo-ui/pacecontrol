@@ -175,22 +175,18 @@
                         <td>
                             <select name="walkers">
                                 <option value="" {% if row.walkers == "" %}selected{% endif %}></option>
-                                <option value="0" {% if row.walkers == "0" %}selected{% endif %}>0</option>
-                                <option value="1" {% if row.walkers == "1" %}selected{% endif %}>1</option>
-                                <option value="2" {% if row.walkers == "2" %}selected{% endif %}>2</option>
-                                <option value="3" {% if row.walkers == "3" %}selected{% endif %}>3</option>
-                                <option value="4" {% if row.walkers == "4" %}selected{% endif %}>4</option>
+                                {% for n in player_count_options(row.num_players) %}
+                                    <option value="{{ n }}" {% if row.walkers == n|string %}selected{% endif %}>{{ n }}</option>
+                                {% endfor %}
                             </select>
                         </td>
                         <td>
                             <select name="riders">
                                 <option value="" {% if row.riders == "" %}selected{% endif %}></option>
-                                <option value="0" {% if row.riders == "0" %}selected{% endif %}>0</option>
-                                <option value="1" {% if row.riders == "1" %}selected{% endif %}>1</option>
-                                <option value="2" {% if row.riders == "2" %}selected{% endif %}>2</option>
-                                <option value="3" {% if row.riders == "3" %}selected{% endif %}>3</option>
-                                <option value="4" {% if row.riders == "4" %}selected{% endif %}>4</option>
-                            </select>
+                                 {% for n in player_count_options(row.num_players) %}
+                                    <option value="{{ n }}" {% if row.riders == n|string %}selected{% endif %}>{{ n }}</option>
+                                {% endfor %}
+                                </select>
                         </td>
                         <td>{{ row.group_type }}</td>
                         <td>
