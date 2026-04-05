@@ -1,6 +1,7 @@
 import os
 import re
 import fitz
+from datetime import datetime
 from flask import Flask, render_template, request, redirect, url_for
 
 app = Flask(__name__)
@@ -67,6 +68,25 @@ def build_average_hole(total_time: str):
     return f"{avg_whole:02d}:{avg_seconds:02d}"
 
 
+def time_sort_key(time_str):
+    """
+    Converts times like '08:00 AM' into sortable datetime values.
+    Blank or invalid times go to the bottom.
+    """
+    if not time_str:
+        return datetime.max
+
+    try:
+        return datetime.strptime(time_str.strip(), "%I:%M %p")
+    except ValueError:
+        return datetime.max
+
+
+def sort_rows():
+    global tee_sheet_rows
+    tee_sheet_rows.sort(key=lambda row: time_sort_key(row.get("reservation_time", "")))
+
+
 def parse_tee_sheet_pdf(pdf_path: str):
     rows = []
     doc = fitz.open(pdf_path)
@@ -121,6 +141,7 @@ def parse_tee_sheet_pdf(pdf_path: str):
             "average_hole": ""
         })
 
+    rows.sort(key=lambda row: time_sort_key(row.get("reservation_time", "")))
     return rows
 
 
@@ -142,6 +163,8 @@ def upload_pdf():
     pdf_file.save(save_path)
 
     tee_sheet_rows = parse_tee_sheet_pdf(save_path)
+    sort_rows()
+
     return redirect(url_for("tee_sheet"))
 
 
@@ -154,6 +177,27 @@ def tee_sheet():
         edit_id = None
 
     return render_template("tee_sheet.html", rows=tee_sheet_rows, edit_id=edit_id)
+
+
+@app.route("/add-reservation", methods=["POST"])
+def add_reservation():
+    global tee_sheet_rows
+
+    tee_sheet_rows.append({
+        "reservation_time": "",
+        "group_name": "",
+        "players": "",
+        "num_players": 0,
+        "walkers": "",
+        "riders": "",
+        "group_type": "",
+        "rotation": "",
+        "total_time": "",
+        "average_hole": ""
+    })
+
+    new_index = len(tee_sheet_rows) - 1
+    return redirect(url_for("tee_sheet", edit=new_index))
 
 
 @app.route("/save/<int:row_id>", methods=["POST"])
@@ -189,6 +233,7 @@ def save_row(row_id):
         "average_hole": average_hole
     }
 
+    sort_rows()
     return redirect(url_for("tee_sheet"))
 
 
@@ -199,6 +244,7 @@ def delete_row(row_id):
     if 0 <= row_id < len(tee_sheet_rows):
         tee_sheet_rows.pop(row_id)
 
+    sort_rows()
     return redirect(url_for("tee_sheet"))
 
 
