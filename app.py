@@ -55,7 +55,18 @@ def build_group_type(num_players, walkers, riders):
     return ""
 
 
-def build_average_hole(total_time: str):
+def holes_for_rotation(rotation: str):
+    if not rotation:
+        return 18
+
+    nine_hole_rotations = {"South", "West", "East"}
+    if rotation in nine_hole_rotations:
+        return 9
+
+    return 18
+
+
+def build_average_hole(total_time: str, rotation: str):
     if not total_time:
         return ""
 
@@ -67,7 +78,11 @@ def build_average_hole(total_time: str):
     minutes = int(match.group(2))
     total_minutes = hours * 60 + minutes
 
-    avg_minutes = total_minutes / 18
+    holes = holes_for_rotation(rotation)
+    if holes <= 0:
+        return ""
+
+    avg_minutes = total_minutes / holes
     avg_whole = int(avg_minutes)
     avg_seconds = int(round((avg_minutes - avg_whole) * 60))
 
@@ -85,9 +100,9 @@ def normalize_reservation_time(time_str):
     value = time_str.strip().upper().replace(".", "")
 
     formats = [
-        "%I:%M %p",   # 9:10 AM
-        "%I:%M%p",    # 9:10AM
-        "%H:%M",      # 09:10 or 9:10
+        "%I:%M %p",
+        "%I:%M%p",
+        "%H:%M",
     ]
 
     for fmt in formats:
@@ -266,7 +281,7 @@ def save_row(row_id):
             riders = ""
 
     group_type = build_group_type(num_players, walkers, riders)
-    average_hole = build_average_hole(total_time)
+    average_hole = build_average_hole(total_time, rotation)
 
     tee_sheet_rows[row_id] = {
         "reservation_time": reservation_time,
