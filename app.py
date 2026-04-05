@@ -13,6 +13,15 @@ tee_sheet_rows = []
 def parse_players(players_text: str):
     return [p.strip() for p in players_text.split(",") if p.strip()]
 
+def player_count_options(num_players):
+    try:
+        count = int(num_players)
+    except (ValueError, TypeError):
+        count = 4
+
+    count = max(0, min(count, 4))
+    return list(range(count + 1))
+
 
 def build_group_name(players_text: str):
     players = parse_players(players_text)
@@ -176,8 +185,11 @@ def tee_sheet():
     except ValueError:
         edit_id = None
 
-    return render_template("tee_sheet.html", rows=tee_sheet_rows, edit_id=edit_id)
-
+    return render_template(
+        "tee_sheet.html",
+        rows=tee_sheet_rows,
+        edit_id=edit_id,
+        player_count_options=player_count_options)
 
 @app.route("/add-reservation", methods=["POST"])
 def add_reservation():
