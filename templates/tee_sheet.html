@@ -163,26 +163,26 @@
                 {% for row in rows %}
                 {% if edit_id == loop.index0 %}
                 <tr id="row-{{ loop.index0 }}" class="editing-row">
-                    <form action="/save/{{ loop.index0 }}" method="POST">
-                        <td>
-                            <input class="time-input" type="text" name="reservation_time" value="{{ row.reservation_time }}" placeholder="08:00 AM">
-                        </td>
-                        <td>{{ row.group_name }}</td>
-                        <td>
+                    <td>
+                        <form action="/save/{{ loop.index0 }}" method="POST">
+                            <input class="time-input" type="text" name="reservation_time" value="{{ row.reservation_time }}" placeholder="09:10 AM">
+                    </td>
+                    <td>{{ row.group_name }}</td>
+                    <td>
                             <input class="players-input" type="text" name="players" value="{{ row.players }}" placeholder="Smith, Jones, Brown, Kelly">
-                        </td>
-                        <td>{{ row.num_players }}</td>
-                        <td>
+                    </td>
+                    <td>{{ row.num_players }}</td>
+                    <td>
                             <select name="walkers">
                                 <option value="" {% if row.walkers == "" %}selected{% endif %}></option>
                                 {% for n in player_count_options(row.num_players) %}
                                     <option value="{{ n }}" {% if row.walkers == n|string %}selected{% endif %}>{{ n }}</option>
                                 {% endfor %}
                             </select>
-                        </td>
-                        <td>Auto</td>
-                        <td>{{ row.group_type }}</td>
-                       <td>
+                    </td>
+                    <td>Auto</td>
+                    <td>{{ row.group_type }}</td>
+                    <td>
                             <select name="rotation">
                                 <option value="" {% if row.rotation == "" %}selected{% endif %}></option>
                                 <option value="South-West" {% if row.rotation == "South-West" %}selected{% endif %}>South-West</option>
@@ -195,20 +195,21 @@
                                 <option value="West" {% if row.rotation == "West" %}selected{% endif %}>West</option>
                                 <option value="East" {% if row.rotation == "East" %}selected{% endif %}>East</option>
                             </select>
-                        </td>
-                        <td>
+                    </td>
+                    <td>
                             <input class="time-input" type="text" name="total_time" value="{{ row.total_time }}" placeholder="4:18">
-                        </td>
-                        <td>{{ row.average_hole }}</td>
-                        <td>
+                    </td>
+                    <td>{{ row.average_hole }}</td>
+                    <td>
                             <div class="actions">
                                 <button class="btn btn-save" type="submit">Save</button>
-                                <a class="btn btn-cancel" href="/tee-sheet">Cancel</a>
+                                <a class="btn btn-cancel" href="/tee-sheet#row-{{ loop.index0 }}">Cancel</a>
                             </div>
-                        </td>
-                    </form>
+                        </form>
+                    </td>
+                </tr>
+                {% else %}
                 <tr id="row-{{ loop.index0 }}">
-                <tr>
                     <td>{{ row.reservation_time }}</td>
                     <td>{{ row.group_name }}</td>
                     <td>{{ row.players }}</td>
@@ -241,13 +242,14 @@
         <p>No tee sheet has been uploaded yet.</p>
     </div>
     {% endif %}
+
     <script>
-    if (window.location.hash) {
-        const el = document.querySelector(window.location.hash);
-        if (el) {
-            el.scrollIntoView({ behavior: "smooth", block: "center" });
+        if (window.location.hash) {
+            const el = document.querySelector(window.location.hash);
+            if (el) {
+                el.scrollIntoView({ behavior: "smooth", block: "center" });
+            }
         }
-    }
-</script>
+    </script>
 </body>
 </html>
