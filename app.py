@@ -29,155 +29,79 @@ def clean_player_name(name: str) -> str:
 
 
 def parse_tee_sheet_pdf(pdf_path: str):
+    import fitz
+    import re
+
     rows = []
     doc = fitz.open(pdf_path)
 
-    time_pattern = re.compile(r"^\d{2}:\d{2}$")
-    ampm_values = {"AM", "PM"}
+    full_text = ""
 
     for page in doc:
-        words = page.get_text("words")
-        if not words:
-            continue
-
-        # Each word item:
-        # (x0, y0, x1, y1, text, block_no, line_no, word_no)
-
-        # Sort by y then x for stability
-        words = sorted(words, key=lambda w: (round(w[1], 1), w[0]))
-
-        time_entries = []
-
-        # Build time rows from the left side of the page
-        for i, w in enumerate(words):
-            x0, y0, x1, y1, text = w[0], w[1], w[2], w[3], w[4]
-
-            # Time column is on far left
-            if x0 > 130:
-                continue
-
-            # Match "08:00" then next word "AM"/"PM"
-            if time_pattern.match(text):
-                ampm = None
-
-                # Look for nearby AM/PM on the same row
-                for j in range(i + 1, min(i + 4, len(words))):
-                    nw = words[j]
-                    nx0, ny0, nx1, ny1, ntext = nw[0], nw[1], nw[2], nw[3], nw[4]
-                    if abs(ny0 - y0) < 6 and ntext in ampm_values:
-                        ampm = ntext
-                        break
-
-                if ampm:
-                    full_time = f"{text} {ampm}"
-                    time_entries.append({
-                        "time": full_time,
-                        "y0": y0,
-                        "y1": y1
-                    })
-
-        if not time_entries:
-            continue
-
-        # Remove duplicates that can happen from text extraction
-        deduped = []
-        seen = set()
-        for entry in time_entries:
-            key = (entry["time"], round(entry["y0"], 1))
-            if key not in seen:
-                seen.add(key)
-                deduped.append(entry)
-
-        time_entries = deduped
-
-        # For each time row, find if it's a reservation row (R) and collect names
-        for idx, entry in enumerate(time_entries):
-            row_top = entry["y0"] - 2
-
-            if idx < len(time_entries) - 1:
-                row_bottom = time_entries[idx + 1]["y0"] - 2
-            else:
-                row_bottom = page.rect.height - 1
-
-            # Skip the notes/footer section
-            if entry["time"] == "06:30 PM":
-                continue
-
-            # Find reservation marker in the second column
-            status_words = [
-                w for w in words
-                if 100 <= w[0] <= 170 and row_top <= w[1] < row_bottom
-            ]
-
-            status_texts = [w[4] for w in status_words]
-
-            # Only keep reservation rows, not empty slots
-            if "R" not in status_texts:
-                continue
-
-            # Find names in the Name column
-            # Based on your PDF layout, names sit roughly in this x-range
-            name_words = [
-                w for w in words
-                if 380 <= w[0] <= 760 and row_top <= w[1] < row_bottom
-            ]
-
-            if not name_words:
-                continue
-
-            # Group words by line (same player line)
-            lines = {}
-            for w in name_words:
-                line_key = round(w[1], 1)
-                lines.setdefault(line_key, []).append(w)
-
-            player_lines = []
-            for _, line_words in sorted(lines.items(), key=lambda item: item[0]):
-                line_words = sorted(line_words, key=lambda w: w[0])
-                line_text = " ".join(w[4] for w in line_words).strip()
-
-                # Ignore notes and junk lines
-                if not line_text:
-                    continue
-                if "Bag Storage" in line_text:
-                    continue
-                if line_text == "--":
-                    continue
-                if line_text.startswith("Staff Note"):
-                    continue
-                if line_text.startswith("Member Note"):
-                    continue
-                if line_text in {"R", "E"}:
-                    continue
-
-                # A player line should look like "Last, First ..."
-                if "," in line_text:
-                    player_lines.append(clean_player_name(line_text))
-
-            if not player_lines:
-                continue
-
-            last_names = [extract_last_name(name) for name in player_lines]
-            first_last_name = last_names[0]
-
-            row = {
-                "reservation_time": entry["time"],
-                "group_name": f"{first_last_name} Group",
-                "players": ", ".join(last_names),
-                "num_players": len(last_names),
-                "walkers": "",
-                "riders": "",
-                "group_type": "",
-                "rotation": "",
-                "total_time": "",
-                "average_hole": ""
-            }
-
-            rows.append(row)
+        full_text += page.get_text()
 
     doc.close()
 
-    # Sort by reservation time string order already extracted from PDF flow
+    lines = [line.strip() for line in full_text.split("\n") if line.strip()]
+
+    time_pattern = re.compile(r"\d{2}:\d{2} (AM|PM)")
+
+    current_time = None
+    current_players = []
+
+    for line in lines:
+        # Check if this line is a tee time
+        if time_pattern.match(line):
+            # Save previous group if exists
+            if current_time and current_players:
+                last_names = [p.split(",")[0] for p in current_players]
+
+                rows.append({
+                    "reservation_time": current_time,
+                    "group_name": f"{last_names[0]} Group",
+                    "players": ", ".join(last_names),
+                    "num_players": len(last_names),
+                    "walkers": "",
+                    "riders": "",
+                    "group_type": "",
+                    "rotation": "",
+                    "total_time": "",
+                    "average_hole": ""
+                })
+
+            current_time = line
+            current_players = []
+            continue
+
+        # Skip empty slots
+        if line == "E":
+            current_time = None
+            current_players = []
+            continue
+
+        # Capture player lines
+        if "," in line and "(" in line:
+            # Clean player name
+            name = re.sub(r"\s*\([^)]+\)", "", line)
+            current_players.append(name)
+
+    # Catch last group
+    if current_time and current_players:
+        last_names = [p.split(",")[0] for p in current_players]
+
+        rows.append({
+            "reservation_time": current_time,
+            "group_name": f"{last_names[0]} Group",
+            "players": ", ".join(last_names),
+            "num_players": len(last_names),
+            "walkers": "",
+            "riders": "",
+            "group_type": "",
+            "rotation": "",
+            "total_time": "",
+            "average_hole": ""
+        })
+
     return rows
 
 
