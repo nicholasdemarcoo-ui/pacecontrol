@@ -78,12 +78,35 @@ def build_average_hole(total_time: str):
     return f"{avg_whole:02d}:{avg_seconds:02d}"
 
 
-def time_sort_key(time_str):
+def normalize_reservation_time(time_str):
     if not time_str:
+        return ""
+
+    value = time_str.strip().upper().replace(".", "")
+
+    formats = [
+        "%I:%M %p",   # 9:10 AM
+        "%I:%M%p",    # 9:10AM
+        "%H:%M",      # 09:10 or 9:10
+    ]
+
+    for fmt in formats:
+        try:
+            dt = datetime.strptime(value, fmt)
+            return dt.strftime("%I:%M %p")
+        except ValueError:
+            continue
+
+    return value
+
+
+def time_sort_key(time_str):
+    normalized = normalize_reservation_time(time_str)
+    if not normalized:
         return datetime.max
 
     try:
-        return datetime.strptime(time_str.strip(), "%I:%M %p")
+        return datetime.strptime(normalized, "%I:%M %p")
     except ValueError:
         return datetime.max
 
@@ -221,7 +244,9 @@ def save_row(row_id):
     if row_id < 0 or row_id >= len(tee_sheet_rows):
         return redirect(url_for("tee_sheet"))
 
-    reservation_time = request.form.get("reservation_time", "").strip()
+   reservation_time = normalize_reservation_time(
+    request.form.get("reservation_time", "").strip()
+)
     players = request.form.get("players", "").strip()
     walkers = request.form.get("walkers", "").strip()
     rotation = request.form.get("rotation", "").strip()
