@@ -176,7 +176,7 @@
                             <select name="walkers">
                                 <option value="" {% if row.walkers == "" %}selected{% endif %}></option>
                                 {% for n in player_count_options(row.num_players) %}
-                                     <option value="{{ n }}" {% if row.walkers == n|string %}selected{% endif %}>{{ n }}</option>
+                                    <option value="{{ n }}" {% if row.walkers == n|string %}selected{% endif %}>{{ n }}</option>
                                 {% endfor %}
                             </select>
                         </td>
