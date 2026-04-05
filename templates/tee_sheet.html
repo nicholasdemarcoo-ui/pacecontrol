@@ -16,11 +16,15 @@
             margin-bottom: 20px;
         }
 
-        .top-link {
+        .top-bar {
             margin-bottom: 20px;
+            display: flex;
+            gap: 12px;
+            align-items: center;
+            flex-wrap: wrap;
         }
 
-        .top-link a {
+        .top-bar a {
             color: #0b57d0;
             text-decoration: none;
             font-weight: bold;
@@ -105,7 +109,8 @@
         }
 
         .btn-edit,
-        .btn-save {
+        .btn-save,
+        .btn-add {
             background: #0b57d0;
             color: white;
         }
@@ -119,13 +124,21 @@
             background: #777;
             color: white;
         }
+
+        .add-form {
+            margin: 0;
+        }
     </style>
 </head>
 <body>
     <h1>Tee Sheet</h1>
 
-    <div class="top-link">
+    <div class="top-bar">
         <a href="/">Upload Another Tee Sheet</a>
+
+        <form class="add-form" action="/add-reservation" method="POST">
+            <button class="btn btn-add" type="submit">Add Reservation</button>
+        </form>
     </div>
 
     {% if rows and rows|length > 0 %}
@@ -152,11 +165,11 @@
                 <tr class="editing-row">
                     <form action="/save/{{ loop.index0 }}" method="POST">
                         <td>
-                            <input class="time-input" type="text" name="reservation_time" value="{{ row.reservation_time }}">
+                            <input class="time-input" type="text" name="reservation_time" value="{{ row.reservation_time }}" placeholder="08:00 AM">
                         </td>
                         <td>{{ row.group_name }}</td>
                         <td>
-                            <input class="players-input" type="text" name="players" value="{{ row.players }}">
+                            <input class="players-input" type="text" name="players" value="{{ row.players }}" placeholder="Smith, Jones, Brown, Kelly">
                         </td>
                         <td>{{ row.num_players }}</td>
                         <td>
@@ -231,6 +244,9 @@
     </div>
     {% else %}
     <div class="empty-state">
+        <form class="add-form" action="/add-reservation" method="POST" style="margin-bottom: 20px;">
+            <button class="btn btn-add" type="submit">Add Reservation</button>
+        </form>
         <p>No tee sheet has been uploaded yet.</p>
     </div>
     {% endif %}
