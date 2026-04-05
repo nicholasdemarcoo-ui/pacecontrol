@@ -176,18 +176,11 @@
                             <select name="walkers">
                                 <option value="" {% if row.walkers == "" %}selected{% endif %}></option>
                                 {% for n in player_count_options(row.num_players) %}
-                                    <option value="{{ n }}" {% if row.walkers == n|string %}selected{% endif %}>{{ n }}</option>
+                                     <option value="{{ n }}" {% if row.walkers == n|string %}selected{% endif %}>{{ n }}</option>
                                 {% endfor %}
                             </select>
                         </td>
-                        <td>
-                            <select name="riders">
-                                <option value="" {% if row.riders == "" %}selected{% endif %}></option>
-                                 {% for n in player_count_options(row.num_players) %}
-                                    <option value="{{ n }}" {% if row.riders == n|string %}selected{% endif %}>{{ n }}</option>
-                                {% endfor %}
-                                </select>
-                        </td>
+                        <td>Auto</td>
                         <td>{{ row.group_type }}</td>
                         <td>
                             <select name="rotation">
