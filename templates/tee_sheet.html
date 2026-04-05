@@ -162,7 +162,7 @@
             <tbody>
                 {% for row in rows %}
                 {% if edit_id == loop.index0 %}
-                <tr class="editing-row">
+                <tr id="row-{{ loop.index0 }}" class="editing-row">
                     <form action="/save/{{ loop.index0 }}" method="POST">
                         <td>
                             <input class="time-input" type="text" name="reservation_time" value="{{ row.reservation_time }}" placeholder="08:00 AM">
@@ -207,8 +207,7 @@
                             </div>
                         </td>
                     </form>
-                </tr>
-                {% else %}
+                <tr id="row-{{ loop.index0 }}">
                 <tr>
                     <td>{{ row.reservation_time }}</td>
                     <td>{{ row.group_name }}</td>
@@ -222,7 +221,7 @@
                     <td>{{ row.average_hole }}</td>
                     <td>
                         <div class="actions">
-                            <a class="btn btn-edit" href="/tee-sheet?edit={{ loop.index0 }}">Edit</a>
+                            <a class="btn btn-edit" href="/tee-sheet?edit={{ loop.index0 }}#row-{{ loop.index0 }}">Edit</a>
                             <form action="/delete/{{ loop.index0 }}" method="POST" style="margin: 0;">
                                 <button class="btn btn-delete" type="submit" onclick="return confirm('Delete this reservation?')">Delete</button>
                             </form>
@@ -242,5 +241,13 @@
         <p>No tee sheet has been uploaded yet.</p>
     </div>
     {% endif %}
+    <script>
+    if (window.location.hash) {
+        const el = document.querySelector(window.location.hash);
+        if (el) {
+            el.scrollIntoView({ behavior: "smooth", block: "center" });
+        }
+    }
+</script>
 </body>
 </html>
