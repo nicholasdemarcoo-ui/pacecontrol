@@ -7,21 +7,30 @@
     <style>
         body {
             font-family: Arial, sans-serif;
-            margin: 30px;
+            margin: 0;
             background: #f7f7f7;
             color: #222;
         }
 
+        .page-shell {
+            padding: 20px 30px 30px 30px;
+        }
+
         h1 {
-            margin-bottom: 20px;
+            margin: 0 0 16px 0;
         }
 
         .top-bar {
-            margin-bottom: 20px;
+            position: sticky;
+            top: 0;
+            z-index: 20;
+            background: #f7f7f7;
+            padding: 20px 0 14px 0;
             display: flex;
             gap: 12px;
             align-items: center;
             flex-wrap: wrap;
+            border-bottom: 1px solid #ddd;
         }
 
         .top-bar a {
@@ -32,14 +41,18 @@
 
         .table-wrap {
             background: white;
+            margin-top: 18px;
             padding: 20px;
             border-radius: 12px;
             box-shadow: 0 2px 10px rgba(0,0,0,0.08);
             overflow-x: auto;
+            overflow-y: auto;
+            max-height: calc(100vh - 170px);
         }
 
         .empty-state {
             background: white;
+            margin-top: 18px;
             padding: 30px;
             border-radius: 12px;
             box-shadow: 0 2px 10px rgba(0,0,0,0.08);
@@ -59,9 +72,12 @@
             vertical-align: top;
         }
 
-        th {
+        thead th {
+            position: sticky;
+            top: 0;
             background: #0b57d0;
             color: white;
+            z-index: 10;
         }
 
         tr:nth-child(even) {
@@ -131,123 +147,126 @@
     </style>
 </head>
 <body>
-    <h1>Tee Sheet</h1>
+    <div class="page-shell">
+        <div class="top-bar">
+            <h1>Tee Sheet</h1>
+            <a href="/">Upload Another Tee Sheet</a>
 
-    <div class="top-bar">
-        <a href="/">Upload Another Tee Sheet</a>
+            <form class="add-form" action="/add-reservation" method="POST">
+                <button class="btn btn-add" type="submit">Add Reservation</button>
+            </form>
+        </div>
 
-        <form class="add-form" action="/add-reservation" method="POST">
-            <button class="btn btn-add" type="submit">Add Reservation</button>
-        </form>
-    </div>
-
-    {% if rows and rows|length > 0 %}
-    <div class="table-wrap">
-        <table>
-            <thead>
-                <tr>
-                    <th>Reservation Time</th>
-                    <th>Group Name</th>
-                    <th>Players</th>
-                    <th># of Players</th>
-                    <th>Walkers</th>
-                    <th>Riders</th>
-                    <th>Group Type</th>
-                    <th>Rotation</th>
-                    <th>Total Time</th>
-                    <th>Average/Hole</th>
-                    <th>Actions</th>
-                </tr>
-            </thead>
-            <tbody>
-                {% for row in rows %}
-                {% if edit_id == loop.index0 %}
-                <tr id="row-{{ loop.index0 }}" class="editing-row">
-                    <td>
-                        <form action="/save/{{ loop.index0 }}" method="POST">
-                            <input class="time-input" type="text" name="reservation_time" value="{{ row.reservation_time }}" placeholder="09:10 AM">
-                    </td>
-                    <td>{{ row.group_name }}</td>
-                    <td>
-                            <input class="players-input" type="text" name="players" value="{{ row.players }}" placeholder="Smith, Jones, Brown, Kelly">
-                    </td>
-                    <td>{{ row.num_players }}</td>
-                    <td>
-                            <select name="walkers">
-                                <option value="" {% if row.walkers == "" %}selected{% endif %}></option>
-                                {% for n in player_count_options(row.num_players) %}
-                                    <option value="{{ n }}" {% if row.walkers == n|string %}selected{% endif %}>{{ n }}</option>
-                                {% endfor %}
-                            </select>
-                    </td>
-                    <td>Auto</td>
-                    <td>{{ row.group_type }}</td>
-                    <td>
-                            <select name="rotation">
-                                <option value="" {% if row.rotation == "" %}selected{% endif %}></option>
-                                <option value="South-West" {% if row.rotation == "South-West" %}selected{% endif %}>South-West</option>
-                                <option value="South-East" {% if row.rotation == "South-East" %}selected{% endif %}>South-East</option>
-                                <option value="East-South" {% if row.rotation == "East-South" %}selected{% endif %}>East-South</option>
-                                <option value="East-West" {% if row.rotation == "East-West" %}selected{% endif %}>East-West</option>
-                                <option value="West-South" {% if row.rotation == "West-South" %}selected{% endif %}>West-South</option>
-                                <option value="West-East" {% if row.rotation == "West-East" %}selected{% endif %}>West-East</option>
-                                <option value="South" {% if row.rotation == "South" %}selected{% endif %}>South</option>
-                                <option value="West" {% if row.rotation == "West" %}selected{% endif %}>West</option>
-                                <option value="East" {% if row.rotation == "East" %}selected{% endif %}>East</option>
-                            </select>
-                    </td>
-                    <td>
-                            <input class="time-input" type="text" name="total_time" value="{{ row.total_time }}" placeholder="0:00">
-                    </td>
-                    <td>{{ row.average_hole }}</td>
-                    <td>
-                            <div class="actions">
-                                <button class="btn btn-save" type="submit">Save</button>
-                                <a class="btn btn-cancel" href="/tee-sheet#row-{{ loop.index0 }}">Cancel</a>
-                            </div>
-                        </form>
-                    </td>
-                </tr>
-                {% else %}
-                <tr id="row-{{ loop.index0 }}">
-                    <td>{{ row.reservation_time }}</td>
-                    <td>{{ row.group_name }}</td>
-                    <td>{{ row.players }}</td>
-                    <td>{{ row.num_players }}</td>
-                    <td>{{ row.walkers }}</td>
-                    <td>{{ row.riders }}</td>
-                    <td>{{ row.group_type }}</td>
-                    <td>{{ row.rotation }}</td>
-                    <td>{{ row.total_time }}</td>
-                    <td>{{ row.average_hole }}</td>
-                    <td>
-                        <div class="actions">
-                            <a class="btn btn-edit" href="/tee-sheet?edit={{ loop.index0 }}#row-{{ loop.index0 }}">Edit</a>
-                            <form action="/delete/{{ loop.index0 }}" method="POST" style="margin: 0;">
-                                <button class="btn btn-delete" type="submit" onclick="return confirm('Delete this reservation?')">Delete</button>
+        {% if rows and rows|length > 0 %}
+        <div class="table-wrap">
+            <table>
+                <thead>
+                    <tr>
+                        <th>Reservation Time</th>
+                        <th>Group Name</th>
+                        <th>Players</th>
+                        <th># of Players</th>
+                        <th>Walkers</th>
+                        <th>Riders</th>
+                        <th>Group Type</th>
+                        <th>Rotation</th>
+                        <th>Total Time</th>
+                        <th>Average/Hole</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for row in rows %}
+                    {% if edit_id == loop.index0 %}
+                    <tr id="row-{{ loop.index0 }}" class="editing-row">
+                        <td>
+                            <form action="/save/{{ loop.index0 }}" method="POST">
+                                <input class="time-input" type="text" name="reservation_time" value="{{ row.reservation_time }}" placeholder="09:10 AM">
+                        </td>
+                        <td>{{ row.group_name }}</td>
+                        <td>
+                                <input class="players-input" type="text" name="players" value="{{ row.players }}" placeholder="Smith, Jones, Brown, Kelly">
+                        </td>
+                        <td>{{ row.num_players }}</td>
+                        <td>
+                                <select name="walkers">
+                                    <option value="" {% if row.walkers == "" %}selected{% endif %}></option>
+                                    {% for n in player_count_options(row.num_players) %}
+                                        <option value="{{ n }}" {% if row.walkers == n|string %}selected{% endif %}>{{ n }}</option>
+                                    {% endfor %}
+                                </select>
+                        </td>
+                        <td>Auto</td>
+                        <td>{{ row.group_type }}</td>
+                        <td>
+                                <select name="rotation">
+                                    <option value="" {% if row.rotation == "" %}selected{% endif %}></option>
+                                    <option value="South-West" {% if row.rotation == "South-West" %}selected{% endif %}>South-West</option>
+                                    <option value="South-East" {% if row.rotation == "South-East" %}selected{% endif %}>South-East</option>
+                                    <option value="East-South" {% if row.rotation == "East-South" %}selected{% endif %}>East-South</option>
+                                    <option value="East-West" {% if row.rotation == "East-West" %}selected{% endif %}>East-West</option>
+                                    <option value="West-South" {% if row.rotation == "West-South" %}selected{% endif %}>West-South</option>
+                                    <option value="West-East" {% if row.rotation == "West-East" %}selected{% endif %}>West-East</option>
+                                    <option value="South" {% if row.rotation == "South" %}selected{% endif %}>South</option>
+                                    <option value="West" {% if row.rotation == "West" %}selected{% endif %}>West</option>
+                                    <option value="East" {% if row.rotation == "East" %}selected{% endif %}>East</option>
+                                </select>
+                        </td>
+                        <td>
+                                <input class="time-input" type="text" name="total_time" value="{{ row.total_time }}" placeholder="4:18">
+                        </td>
+                        <td>{{ row.average_hole }}</td>
+                        <td>
+                                <div class="actions">
+                                    <button class="btn btn-save" type="submit">Save</button>
+                                    <a class="btn btn-cancel" href="/tee-sheet#row-{{ loop.index0 }}">Cancel</a>
+                                </div>
                             </form>
-                        </div>
-                    </td>
-                </tr>
-                {% endif %}
-                {% endfor %}
-            </tbody>
-        </table>
+                        </td>
+                    </tr>
+                    {% else %}
+                    <tr id="row-{{ loop.index0 }}">
+                        <td>{{ row.reservation_time }}</td>
+                        <td>{{ row.group_name }}</td>
+                        <td>{{ row.players }}</td>
+                        <td>{{ row.num_players }}</td>
+                        <td>{{ row.walkers }}</td>
+                        <td>{{ row.riders }}</td>
+                        <td>{{ row.group_type }}</td>
+                        <td>{{ row.rotation }}</td>
+                        <td>{{ row.total_time }}</td>
+                        <td>{{ row.average_hole }}</td>
+                        <td>
+                            <div class="actions">
+                                <a class="btn btn-edit" href="/tee-sheet?edit={{ loop.index0 }}#row-{{ loop.index0 }}">Edit</a>
+                                <form action="/delete/{{ loop.index0 }}" method="POST" style="margin: 0;">
+                                    <button class="btn btn-delete" type="submit" onclick="return confirm('Delete this reservation?')">Delete</button>
+                                </form>
+                            </div>
+                        </td>
+                    </tr>
+                    {% endif %}
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% else %}
+        <div class="empty-state">
+            <form class="add-form" action="/add-reservation" method="POST" style="margin-bottom: 20px;">
+                <button class="btn btn-add" type="submit">Add Reservation</button>
+            </form>
+            <p>No tee sheet has been uploaded yet.</p>
+        </div>
+        {% endif %}
     </div>
-    {% else %}
-    <div class="empty-state">
-        <form class="add-form" action="/add-reservation" method="POST" style="margin-bottom: 20px;">
-            <button class="btn btn-add" type="submit">Add Reservation</button>
-        </form>
-        <p>No tee sheet has been uploaded yet.</p>
-    </div>
-    {% endif %}
 
     <script>
         if (window.location.hash) {
             const el = document.querySelector(window.location.hash);
             if (el) {
-                el.scrollIntoView({ behavior: "smooth", block: "center" });
+                setTimeout(() => {
+                    el.scrollIntoView({ behavior: "smooth", block: "center" });
+                }, 100);
             }
         }
     </script>
