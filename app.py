@@ -71,6 +71,9 @@ def build_average_hole(total_time: str):
 
 
 def parse_tee_sheet_pdf(pdf_path: str):
+    import fitz
+    import re
+
     rows = []
     doc = fitz.open(pdf_path)
 
@@ -83,66 +86,51 @@ def parse_tee_sheet_pdf(pdf_path: str):
     lines = [line.strip() for line in full_text.splitlines() if line.strip()]
 
     time_pattern = re.compile(r"^\d{2}:\d{2}\s(?:AM|PM)$")
-    player_pattern = re.compile(r"^[A-Za-z' .-]+,\s+[A-Za-z' .-]+.*\([A-Za-z0-9]+\)$")
+    player_pattern = re.compile(r"^[^,]+,\s*[^()]+\(.*\)$")
 
-    i = 0
-    while i < len(lines):
-        line = lines[i]
+    # Find every tee time line index
+    time_indices = []
+    for idx, line in enumerate(lines):
+        if time_pattern.match(line):
+            time_indices.append(idx)
 
-        if not time_pattern.match(line):
-            i += 1
-            continue
+    for n, start_idx in enumerate(time_indices):
+        reservation_time = lines[start_idx]
 
-        reservation_time = line
-        i += 1
-
-        if i >= len(lines):
+        # Stop before notes/footer
+        if reservation_time == "06:30 PM":
             break
 
-        status = None
-        lookahead_index = i
-
-        while lookahead_index < len(lines) and lookahead_index < i + 8:
-            if lines[lookahead_index] in {"R", "E"}:
-                status = lines[lookahead_index]
-                break
-            lookahead_index += 1
-
-        if status != "R":
-            continue
+        end_idx = time_indices[n + 1] if n + 1 < len(time_indices) else len(lines)
+        block = lines[start_idx:end_idx]
 
         player_names = []
 
-        while i < len(lines):
-            current_line = lines[i]
-
-            if time_pattern.match(current_line):
-                break
-
-            if player_pattern.match(current_line):
-                clean_name = re.sub(r"\s*\([^)]+\)", "", current_line).strip()
+        for line in block:
+            if player_pattern.match(line):
+                clean_name = re.sub(r"\s*\([^)]+\)", "", line).strip()
                 player_names.append(clean_name)
 
-            i += 1
+        # If no player names, treat it as empty and skip
+        if not player_names:
+            continue
 
-        if player_names:
-            last_names = [name.split(",")[0].strip() for name in player_names]
+        last_names = [name.split(",")[0].strip() for name in player_names]
 
-            rows.append({
-                "reservation_time": reservation_time,
-                "group_name": f"{last_names[0]} Group",
-                "players": ", ".join(last_names),
-                "num_players": len(last_names),
-                "walkers": "",
-                "riders": "",
-                "group_type": "",
-                "rotation": "",
-                "total_time": "",
-                "average_hole": ""
-            })
+        rows.append({
+            "reservation_time": reservation_time,
+            "group_name": f"{last_names[0]} Group",
+            "players": ", ".join(last_names),
+            "num_players": len(last_names),
+            "walkers": "",
+            "riders": "",
+            "group_type": "",
+            "rotation": "",
+            "total_time": "",
+            "average_hole": ""
+        })
 
     return rows
-
 
 @app.route("/")
 def home():
