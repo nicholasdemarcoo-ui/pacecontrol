@@ -222,13 +222,23 @@ def save_row(row_id):
     reservation_time = request.form.get("reservation_time", "").strip()
     players = request.form.get("players", "").strip()
     walkers = request.form.get("walkers", "").strip()
-    riders = request.form.get("riders", "").strip()
     rotation = request.form.get("rotation", "").strip()
     total_time = request.form.get("total_time", "").strip()
 
     player_list = parse_players(players)
     num_players = len(player_list)
     group_name = build_group_name(players)
+
+    if walkers == "":
+    riders = ""
+    else:
+    try:
+        walkers_int = int(walkers)
+        riders = str(max(0, num_players - walkers_int))
+    except ValueError:
+        walkers = ""
+        riders = ""
+
     group_type = build_group_type(num_players, walkers, riders)
     average_hole = build_average_hole(total_time)
 
