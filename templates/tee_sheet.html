@@ -44,7 +44,7 @@
         table {
             width: 100%;
             border-collapse: collapse;
-            min-width: 1250px;
+            min-width: 1400px;
         }
 
         th, td {
@@ -64,9 +64,33 @@
             background: #f9f9f9;
         }
 
+        tr.editing-row td {
+            background: #fff8c6 !important;
+        }
+
+        input[type="text"], select {
+            width: 100%;
+            min-width: 110px;
+            padding: 8px;
+            border: 1px solid #bbb;
+            border-radius: 6px;
+            box-sizing: border-box;
+            font-size: 14px;
+            background: white;
+        }
+
+        .players-input {
+            min-width: 220px;
+        }
+
+        .time-input {
+            min-width: 95px;
+        }
+
         .actions {
             display: flex;
             gap: 8px;
+            align-items: center;
         }
 
         .btn {
@@ -77,15 +101,22 @@
             border: none;
             cursor: pointer;
             font-size: 14px;
+            white-space: nowrap;
         }
 
-        .btn-edit {
+        .btn-edit,
+        .btn-save {
             background: #0b57d0;
             color: white;
         }
 
         .btn-delete {
             background: #c62828;
+            color: white;
+        }
+
+        .btn-cancel {
+            background: #777;
             color: white;
         }
     </style>
@@ -117,6 +148,62 @@
             </thead>
             <tbody>
                 {% for row in rows %}
+                {% if edit_id == loop.index0 %}
+                <tr class="editing-row">
+                    <form action="/save/{{ loop.index0 }}" method="POST">
+                        <td>
+                            <input class="time-input" type="text" name="reservation_time" value="{{ row.reservation_time }}">
+                        </td>
+                        <td>{{ row.group_name }}</td>
+                        <td>
+                            <input class="players-input" type="text" name="players" value="{{ row.players }}">
+                        </td>
+                        <td>{{ row.num_players }}</td>
+                        <td>
+                            <select name="walkers">
+                                <option value="" {% if row.walkers == "" %}selected{% endif %}></option>
+                                <option value="0" {% if row.walkers == "0" %}selected{% endif %}>0</option>
+                                <option value="1" {% if row.walkers == "1" %}selected{% endif %}>1</option>
+                                <option value="2" {% if row.walkers == "2" %}selected{% endif %}>2</option>
+                                <option value="3" {% if row.walkers == "3" %}selected{% endif %}>3</option>
+                                <option value="4" {% if row.walkers == "4" %}selected{% endif %}>4</option>
+                            </select>
+                        </td>
+                        <td>
+                            <select name="riders">
+                                <option value="" {% if row.riders == "" %}selected{% endif %}></option>
+                                <option value="0" {% if row.riders == "0" %}selected{% endif %}>0</option>
+                                <option value="1" {% if row.riders == "1" %}selected{% endif %}>1</option>
+                                <option value="2" {% if row.riders == "2" %}selected{% endif %}>2</option>
+                                <option value="3" {% if row.riders == "3" %}selected{% endif %}>3</option>
+                                <option value="4" {% if row.riders == "4" %}selected{% endif %}>4</option>
+                            </select>
+                        </td>
+                        <td>{{ row.group_type }}</td>
+                        <td>
+                            <select name="rotation">
+                                <option value="" {% if row.rotation == "" %}selected{% endif %}></option>
+                                <option value="South-West" {% if row.rotation == "South-West" %}selected{% endif %}>South-West</option>
+                                <option value="South-East" {% if row.rotation == "South-East" %}selected{% endif %}>South-East</option>
+                                <option value="East-South" {% if row.rotation == "East-South" %}selected{% endif %}>East-South</option>
+                                <option value="East-West" {% if row.rotation == "East-West" %}selected{% endif %}>East-West</option>
+                                <option value="West-South" {% if row.rotation == "West-South" %}selected{% endif %}>West-South</option>
+                                <option value="West-East" {% if row.rotation == "West-East" %}selected{% endif %}>West-East</option>
+                            </select>
+                        </td>
+                        <td>
+                            <input class="time-input" type="text" name="total_time" value="{{ row.total_time }}" placeholder="4:18">
+                        </td>
+                        <td>{{ row.average_hole }}</td>
+                        <td>
+                            <div class="actions">
+                                <button class="btn btn-save" type="submit">Save</button>
+                                <a class="btn btn-cancel" href="/tee-sheet">Cancel</a>
+                            </div>
+                        </td>
+                    </form>
+                </tr>
+                {% else %}
                 <tr>
                     <td>{{ row.reservation_time }}</td>
                     <td>{{ row.group_name }}</td>
@@ -130,13 +217,14 @@
                     <td>{{ row.average_hole }}</td>
                     <td>
                         <div class="actions">
-                            <a class="btn btn-edit" href="/edit/{{ loop.index0 }}">Edit</a>
+                            <a class="btn btn-edit" href="/tee-sheet?edit={{ loop.index0 }}">Edit</a>
                             <form action="/delete/{{ loop.index0 }}" method="POST" style="margin: 0;">
                                 <button class="btn btn-delete" type="submit" onclick="return confirm('Delete this reservation?')">Delete</button>
                             </form>
                         </div>
                     </td>
                 </tr>
+                {% endif %}
                 {% endfor %}
             </tbody>
         </table>
