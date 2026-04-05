@@ -46,16 +46,26 @@
             font-size: 18px;
         }
 
-        .table-wrap {
+        .table-shell {
             background: white;
             margin-top: 18px;
             padding: 20px;
             border-radius: 12px;
             box-shadow: 0 2px 10px rgba(0,0,0,0.08);
+        }
+
+        .header-table-wrap {
+            overflow-x: auto;
+            overflow-y: hidden;
+            border-radius: 8px 8px 0 0;
+        }
+
+        .body-table-wrap {
             overflow-x: auto;
             overflow-y: auto;
-            max-height: calc(100vh - 220px);
-            position: relative;
+            max-height: calc(100vh - 300px);
+            border-top: 0;
+            border-radius: 0 0 8px 8px;
         }
 
         .empty-state {
@@ -68,65 +78,38 @@
 
         table {
             width: 100%;
-            border-collapse: separate;
-            border-spacing: 0;
             min-width: 1400px;
+            border-collapse: collapse;
+            table-layout: fixed;
             background: white;
         }
 
         th, td {
             border: 1px solid #ddd;
-            border-top: 0;
-            border-left: 0;
             padding: 10px;
             text-align: left;
-            white-space: nowrap;
             vertical-align: top;
             background: white;
+            box-sizing: border-box;
         }
 
-        tr th:first-child,
-        tr td:first-child {
-            border-left: 1px solid #ddd;
-        }
-
-        thead th {
-            position: sticky;
-            top: 0;
-            z-index: 25;
-            background: #0b57d0 !important;
+        th {
+            background: #0b57d0;
             color: white;
-            border-top: 1px solid #0b57d0;
-            border-bottom: 2px solid #0847aa;
-            box-shadow: 0 2px 0 #0847aa;
+            font-weight: bold;
         }
 
-        thead::after {
-            content: "";
-            position: sticky;
-            top: 44px;
-            display: block;
-            height: 0;
-            box-shadow: 0 4px 6px rgba(0,0,0,0.12);
-            z-index: 24;
-        }
-
-        tbody {
-            position: relative;
-            z-index: 1;
-        }
-
-        tbody tr:nth-child(even) td {
+        .body-table tbody tr:nth-child(even) td {
             background: #f9f9f9;
         }
 
-        tr.editing-row td {
+        .body-table tr.editing-row td {
             background: #fff8c6 !important;
         }
 
         input[type="text"], select {
             width: 100%;
-            min-width: 110px;
+            min-width: 0;
             padding: 8px;
             border: 1px solid #bbb;
             border-radius: 6px;
@@ -135,18 +118,11 @@
             background: white;
         }
 
-        .players-input {
-            min-width: 220px;
-        }
-
-        .time-input {
-            min-width: 95px;
-        }
-
         .actions {
             display: flex;
             gap: 8px;
             align-items: center;
+            flex-wrap: wrap;
         }
 
         .btn {
@@ -180,6 +156,19 @@
         .add-form {
             margin: 0;
         }
+
+        /* Match column widths across both tables */
+        .col-time { width: 180px; }
+        .col-group { width: 180px; }
+        .col-players { width: 360px; }
+        .col-count { width: 130px; }
+        .col-walkers { width: 110px; }
+        .col-riders { width: 110px; }
+        .col-type { width: 140px; }
+        .col-rotation { width: 140px; }
+        .col-total { width: 120px; }
+        .col-average { width: 120px; }
+        .col-actions { width: 170px; }
     </style>
 </head>
 <body>
@@ -197,97 +186,104 @@
         </div>
 
         {% if rows and rows|length > 0 %}
-        <div class="table-wrap">
-            <table>
-                <thead>
-                    <tr>
-                        <th>Reservation Time</th>
-                        <th>Group Name</th>
-                        <th>Players</th>
-                        <th># of Players</th>
-                        <th>Walkers</th>
-                        <th>Riders</th>
-                        <th>Group Type</th>
-                        <th>Rotation</th>
-                        <th>Total Time</th>
-                        <th>Average/Hole</th>
-                        <th>Actions</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    {% for row in rows %}
-                    {% if edit_id == loop.index0 %}
-                    <tr id="row-{{ loop.index0 }}" class="editing-row">
-                        <td>
-                            <form action="/save/{{ loop.index0 }}" method="POST">
-                                <input class="time-input" type="text" name="reservation_time" value="{{ row.reservation_time }}" placeholder="09:10 AM">
-                        </td>
-                        <td>{{ row.group_name }}</td>
-                        <td>
-                                <input class="players-input" type="text" name="players" value="{{ row.players }}" placeholder="Smith, Jones, Brown, Kelly">
-                        </td>
-                        <td>{{ row.num_players }}</td>
-                        <td>
-                                <select name="walkers">
-                                    <option value="" {% if row.walkers == "" %}selected{% endif %}></option>
-                                    {% for n in player_count_options(row.num_players) %}
-                                        <option value="{{ n }}" {% if row.walkers == n|string %}selected{% endif %}>{{ n }}</option>
-                                    {% endfor %}
-                                </select>
-                        </td>
-                        <td>Auto</td>
-                        <td>{{ row.group_type }}</td>
-                        <td>
-                                <select name="rotation">
-                                    <option value="" {% if row.rotation == "" %}selected{% endif %}></option>
-                                    <option value="South-West" {% if row.rotation == "South-West" %}selected{% endif %}>South-West</option>
-                                    <option value="South-East" {% if row.rotation == "South-East" %}selected{% endif %}>South-East</option>
-                                    <option value="East-South" {% if row.rotation == "East-South" %}selected{% endif %}>East-South</option>
-                                    <option value="East-West" {% if row.rotation == "East-West" %}selected{% endif %}>East-West</option>
-                                    <option value="West-South" {% if row.rotation == "West-South" %}selected{% endif %}>West-South</option>
-                                    <option value="West-East" {% if row.rotation == "West-East" %}selected{% endif %}>West-East</option>
-                                    <option value="South" {% if row.rotation == "South" %}selected{% endif %}>South</option>
-                                    <option value="West" {% if row.rotation == "West" %}selected{% endif %}>West</option>
-                                    <option value="East" {% if row.rotation == "East" %}selected{% endif %}>East</option>
-                                </select>
-                        </td>
-                        <td>
-                                <input class="time-input" type="text" name="total_time" value="{{ row.total_time }}" placeholder="4:18">
-                        </td>
-                        <td>{{ row.average_hole }}</td>
-                        <td>
-                                <div class="actions">
-                                    <button class="btn btn-save" type="submit">Save</button>
-                                    <a class="btn btn-cancel" href="/tee-sheet#row-{{ loop.index0 }}">Cancel</a>
-                                </div>
-                            </form>
-                        </td>
-                    </tr>
-                    {% else %}
-                    <tr id="row-{{ loop.index0 }}">
-                        <td>{{ row.reservation_time }}</td>
-                        <td>{{ row.group_name }}</td>
-                        <td>{{ row.players }}</td>
-                        <td>{{ row.num_players }}</td>
-                        <td>{{ row.walkers }}</td>
-                        <td>{{ row.riders }}</td>
-                        <td>{{ row.group_type }}</td>
-                        <td>{{ row.rotation }}</td>
-                        <td>{{ row.total_time }}</td>
-                        <td>{{ row.average_hole }}</td>
-                        <td>
-                            <div class="actions">
-                                <a class="btn btn-edit" href="/tee-sheet?edit={{ loop.index0 }}#row-{{ loop.index0 }}">Edit</a>
-                                <form action="/delete/{{ loop.index0 }}" method="POST" style="margin: 0;">
-                                    <button class="btn btn-delete" type="submit" onclick="return confirm('Delete this reservation?')">Delete</button>
+        <div class="table-shell">
+            <div class="header-table-wrap" id="headerScroll">
+                <table>
+                    <thead>
+                        <tr>
+                            <th class="col-time">Reservation Time</th>
+                            <th class="col-group">Group Name</th>
+                            <th class="col-players">Players</th>
+                            <th class="col-count"># of Players</th>
+                            <th class="col-walkers">Walkers</th>
+                            <th class="col-riders">Riders</th>
+                            <th class="col-type">Group Type</th>
+                            <th class="col-rotation">Rotation</th>
+                            <th class="col-total">Total Time</th>
+                            <th class="col-average">Average/Hole</th>
+                            <th class="col-actions">Actions</th>
+                        </tr>
+                    </thead>
+                </table>
+            </div>
+
+            <div class="body-table-wrap" id="bodyScroll">
+                <table class="body-table">
+                    <tbody>
+                        {% for row in rows %}
+                        {% if edit_id == loop.index0 %}
+                        <tr id="row-{{ loop.index0 }}" class="editing-row">
+                            <td class="col-time">
+                                <form action="/save/{{ loop.index0 }}" method="POST">
+                                    <input type="text" name="reservation_time" value="{{ row.reservation_time }}" placeholder="09:10 AM">
+                            </td>
+                            <td class="col-group">{{ row.group_name }}</td>
+                            <td class="col-players">
+                                    <input type="text" name="players" value="{{ row.players }}" placeholder="Smith, Jones, Brown, Kelly">
+                            </td>
+                            <td class="col-count">{{ row.num_players }}</td>
+                            <td class="col-walkers">
+                                    <select name="walkers">
+                                        <option value="" {% if row.walkers == "" %}selected{% endif %}></option>
+                                        {% for n in player_count_options(row.num_players) %}
+                                            <option value="{{ n }}" {% if row.walkers == n|string %}selected{% endif %}>{{ n }}</option>
+                                        {% endfor %}
+                                    </select>
+                            </td>
+                            <td class="col-riders">Auto</td>
+                            <td class="col-type">{{ row.group_type }}</td>
+                            <td class="col-rotation">
+                                    <select name="rotation">
+                                        <option value="" {% if row.rotation == "" %}selected{% endif %}></option>
+                                        <option value="South-West" {% if row.rotation == "South-West" %}selected{% endif %}>South-West</option>
+                                        <option value="South-East" {% if row.rotation == "South-East" %}selected{% endif %}>South-East</option>
+                                        <option value="East-South" {% if row.rotation == "East-South" %}selected{% endif %}>East-South</option>
+                                        <option value="East-West" {% if row.rotation == "East-West" %}selected{% endif %}>East-West</option>
+                                        <option value="West-South" {% if row.rotation == "West-South" %}selected{% endif %}>West-South</option>
+                                        <option value="West-East" {% if row.rotation == "West-East" %}selected{% endif %}>West-East</option>
+                                        <option value="South" {% if row.rotation == "South" %}selected{% endif %}>South</option>
+                                        <option value="West" {% if row.rotation == "West" %}selected{% endif %}>West</option>
+                                        <option value="East" {% if row.rotation == "East" %}selected{% endif %}>East</option>
+                                    </select>
+                            </td>
+                            <td class="col-total">
+                                    <input type="text" name="total_time" value="{{ row.total_time }}" placeholder="4:18">
+                            </td>
+                            <td class="col-average">{{ row.average_hole }}</td>
+                            <td class="col-actions">
+                                    <div class="actions">
+                                        <button class="btn btn-save" type="submit">Save</button>
+                                        <a class="btn btn-cancel" href="/tee-sheet#row-{{ loop.index0 }}">Cancel</a>
+                                    </div>
                                 </form>
-                            </div>
-                        </td>
-                    </tr>
-                    {% endif %}
-                    {% endfor %}
-                </tbody>
-            </table>
+                            </td>
+                        </tr>
+                        {% else %}
+                        <tr id="row-{{ loop.index0 }}">
+                            <td class="col-time">{{ row.reservation_time }}</td>
+                            <td class="col-group">{{ row.group_name }}</td>
+                            <td class="col-players">{{ row.players }}</td>
+                            <td class="col-count">{{ row.num_players }}</td>
+                            <td class="col-walkers">{{ row.walkers }}</td>
+                            <td class="col-riders">{{ row.riders }}</td>
+                            <td class="col-type">{{ row.group_type }}</td>
+                            <td class="col-rotation">{{ row.rotation }}</td>
+                            <td class="col-total">{{ row.total_time }}</td>
+                            <td class="col-average">{{ row.average_hole }}</td>
+                            <td class="col-actions">
+                                <div class="actions">
+                                    <a class="btn btn-edit" href="/tee-sheet?edit={{ loop.index0 }}#row-{{ loop.index0 }}">Edit</a>
+                                    <form action="/delete/{{ loop.index0 }}" method="POST" style="margin: 0;">
+                                        <button class="btn btn-delete" type="submit" onclick="return confirm('Delete this reservation?')">Delete</button>
+                                    </form>
+                                </div>
+                            </td>
+                        </tr>
+                        {% endif %}
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
         </div>
         {% else %}
         <div class="empty-state">
@@ -300,6 +296,15 @@
     </div>
 
     <script>
+        const headerScroll = document.getElementById("headerScroll");
+        const bodyScroll = document.getElementById("bodyScroll");
+
+        if (headerScroll && bodyScroll) {
+            bodyScroll.addEventListener("scroll", () => {
+                headerScroll.scrollLeft = bodyScroll.scrollLeft;
+            });
+        }
+
         if (window.location.hash) {
             const el = document.querySelector(window.location.hash);
             if (el) {
