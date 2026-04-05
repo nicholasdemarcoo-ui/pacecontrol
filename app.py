@@ -13,6 +13,7 @@ tee_sheet_rows = []
 def parse_players(players_text: str):
     return [p.strip() for p in players_text.split(",") if p.strip()]
 
+
 def player_count_options(num_players):
     try:
         count = int(num_players)
@@ -78,10 +79,6 @@ def build_average_hole(total_time: str):
 
 
 def time_sort_key(time_str):
-    """
-    Converts times like '08:00 AM' into sortable datetime values.
-    Blank or invalid times go to the bottom.
-    """
     if not time_str:
         return datetime.max
 
@@ -119,6 +116,7 @@ def parse_tee_sheet_pdf(pdf_path: str):
     for n, start_idx in enumerate(time_indices):
         reservation_time = lines[start_idx]
 
+        # Stop before footer/notes section if needed
         if reservation_time == "06:30 PM":
             break
 
@@ -189,7 +187,9 @@ def tee_sheet():
         "tee_sheet.html",
         rows=tee_sheet_rows,
         edit_id=edit_id,
-        player_count_options=player_count_options)
+        player_count_options=player_count_options
+    )
+
 
 @app.route("/add-reservation", methods=["POST"])
 def add_reservation():
@@ -230,14 +230,16 @@ def save_row(row_id):
     group_name = build_group_name(players)
 
     if walkers == "":
-    riders = ""
-    else:
-    try:
-        walkers_int = int(walkers)
-        riders = str(max(0, num_players - walkers_int))
-    except ValueError:
-        walkers = ""
         riders = ""
+    else:
+        try:
+            walkers_int = int(walkers)
+            walkers_int = max(0, min(walkers_int, num_players))
+            walkers = str(walkers_int)
+            riders = str(num_players - walkers_int)
+        except ValueError:
+            walkers = ""
+            riders = ""
 
     group_type = build_group_type(num_players, walkers, riders)
     average_hole = build_average_hole(total_time)
