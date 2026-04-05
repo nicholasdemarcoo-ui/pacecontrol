@@ -195,7 +195,7 @@ def tee_sheet():
 def add_reservation():
     global tee_sheet_rows
 
-    tee_sheet_rows.append({
+    new_row = {
         "reservation_time": "",
         "group_name": "",
         "players": "",
@@ -206,10 +206,12 @@ def add_reservation():
         "rotation": "",
         "total_time": "",
         "average_hole": ""
-    })
+    }
 
-    new_index = len(tee_sheet_rows) - 1
-    return redirect(url_for("tee_sheet", edit=new_index))
+    # Insert at the TOP instead of bottom
+    tee_sheet_rows.insert(0, new_row)
+
+    return redirect(url_for("tee_sheet", edit=0))
 
 
 @app.route("/save/<int:row_id>", methods=["POST"])
