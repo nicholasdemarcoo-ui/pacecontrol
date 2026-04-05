@@ -8,6 +8,7 @@ app = Flask(__name__)
 app.config["UPLOAD_FOLDER"] = "uploads"
 
 tee_sheet_rows = []
+tee_sheet_date = ""
 
 
 def parse_players(players_text: str):
@@ -194,15 +195,10 @@ def build_summary(rows):
         except Exception:
             continue
 
-        # All carts
         if riders == num_players and num_players > 0:
             cart_times.append(mins)
-
-        # All walkers
         elif walkers == num_players and num_players > 0:
             walker_times.append(mins)
-
-        # Mixed
         elif walkers > 0 and riders > 0:
             mixed_times.append(mins)
 
@@ -230,6 +226,20 @@ def build_summary(rows):
     }
 
 
+def extract_sheet_date(full_text: str):
+    match = re.search(r"Sheet Date:\s*(\d{2}/\d{2}/\d{4})", full_text)
+    if not match:
+        return ""
+
+    raw_date = match.group(1)
+
+    try:
+        dt = datetime.strptime(raw_date, "%m/%d/%Y")
+        return dt.strftime("%m/%d/%Y")
+    except ValueError:
+        return raw_date
+
+
 def parse_tee_sheet_pdf(pdf_path: str):
     rows = []
     doc = fitz.open(pdf_path)
@@ -239,6 +249,8 @@ def parse_tee_sheet_pdf(pdf_path: str):
         full_text += page.get_text("text") + "\n"
 
     doc.close()
+
+    parsed_date = extract_sheet_date(full_text)
 
     lines = [line.strip() for line in full_text.splitlines() if line.strip()]
 
@@ -285,7 +297,7 @@ def parse_tee_sheet_pdf(pdf_path: str):
         })
 
     rows.sort(key=lambda row: time_sort_key(row.get("reservation_time", "")))
-    return rows
+    return rows, parsed_date
 
 
 @app.route("/")
@@ -295,7 +307,7 @@ def home():
 
 @app.route("/upload", methods=["POST"])
 def upload_pdf():
-    global tee_sheet_rows
+    global tee_sheet_rows, tee_sheet_date
 
     pdf_file = request.files.get("tee_sheet_pdf")
     if not pdf_file or pdf_file.filename == "":
@@ -305,7 +317,7 @@ def upload_pdf():
     save_path = os.path.join(app.config["UPLOAD_FOLDER"], pdf_file.filename)
     pdf_file.save(save_path)
 
-    tee_sheet_rows = parse_tee_sheet_pdf(save_path)
+    tee_sheet_rows, tee_sheet_date = parse_tee_sheet_pdf(save_path)
     sort_rows()
 
     return redirect(url_for("tee_sheet"))
@@ -326,7 +338,8 @@ def tee_sheet():
         rows=tee_sheet_rows,
         edit_id=edit_id,
         player_count_options=player_count_options,
-        summary=summary
+        summary=summary,
+        tee_sheet_date=tee_sheet_date
     )
 
 
@@ -413,7 +426,7 @@ def delete_row(row_id):
         tee_sheet_rows.pop(row_id)
 
     sort_rows()
-    return redirect(url_for("tee-sheet"))
+    return redirect(url_for("tee_sheet"))
 
 
 if __name__ == "__main__":
