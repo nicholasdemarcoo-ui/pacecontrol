@@ -139,7 +139,6 @@ def parse_tee_sheet_pdf(pdf_path: str):
     for n, start_idx in enumerate(time_indices):
         reservation_time = lines[start_idx]
 
-        # Stop before footer/notes section if needed
         if reservation_time == "06:30 PM":
             break
 
@@ -231,9 +230,7 @@ def add_reservation():
         "average_hole": ""
     }
 
-    # Insert at the TOP instead of bottom
     tee_sheet_rows.insert(0, new_row)
-
     return redirect(url_for("tee_sheet", edit=0))
 
 
@@ -244,9 +241,9 @@ def save_row(row_id):
     if row_id < 0 or row_id >= len(tee_sheet_rows):
         return redirect(url_for("tee_sheet"))
 
-   reservation_time = normalize_reservation_time(
-    request.form.get("reservation_time", "").strip()
-)
+    reservation_time = normalize_reservation_time(
+        request.form.get("reservation_time", "").strip()
+    )
     players = request.form.get("players", "").strip()
     walkers = request.form.get("walkers", "").strip()
     rotation = request.form.get("rotation", "").strip()
