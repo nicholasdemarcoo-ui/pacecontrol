@@ -19,7 +19,7 @@
         .sticky-header {
             position: sticky;
             top: 0;
-            z-index: 30;
+            z-index: 50;
             background: #f7f7f7;
             padding-top: 20px;
             padding-bottom: 14px;
@@ -68,13 +68,16 @@
 
         table {
             width: 100%;
-            border-collapse: collapse;
+            border-collapse: separate;
+            border-spacing: 0;
             min-width: 1400px;
             background: white;
         }
 
         th, td {
             border: 1px solid #ddd;
+            border-top: 0;
+            border-left: 0;
             padding: 10px;
             text-align: left;
             white-space: nowrap;
@@ -82,12 +85,35 @@
             background: white;
         }
 
+        tr th:first-child,
+        tr td:first-child {
+            border-left: 1px solid #ddd;
+        }
+
         thead th {
             position: sticky;
             top: 0;
-            background: #0b57d0;
+            z-index: 25;
+            background: #0b57d0 !important;
             color: white;
-            z-index: 20;
+            border-top: 1px solid #0b57d0;
+            border-bottom: 2px solid #0847aa;
+            box-shadow: 0 2px 0 #0847aa;
+        }
+
+        thead::after {
+            content: "";
+            position: sticky;
+            top: 44px;
+            display: block;
+            height: 0;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.12);
+            z-index: 24;
+        }
+
+        tbody {
+            position: relative;
+            z-index: 1;
         }
 
         tbody tr:nth-child(even) td {
