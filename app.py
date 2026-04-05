@@ -172,6 +172,7 @@ def build_summary(rows):
     completed = []
     cart_times = []
     walker_times = []
+    mixed_times = []
 
     for row in rows:
         total_time = row.get("total_time", "")
@@ -193,13 +194,17 @@ def build_summary(rows):
         except Exception:
             continue
 
-        # Cart average = any group with at least 1 rider
-        if riders > 0:
+        # All carts
+        if riders == num_players and num_players > 0:
             cart_times.append(mins)
 
-        # Walker average = only all-walking groups
-        if walkers == num_players:
+        # All walkers
+        elif walkers == num_players and num_players > 0:
             walker_times.append(mins)
+
+        # Mixed
+        elif walkers > 0 and riders > 0:
+            mixed_times.append(mins)
 
     fastest = min(completed, default=None, key=lambda x: x[0])
     slowest = max(completed, default=None, key=lambda x: x[0])
@@ -210,6 +215,7 @@ def build_summary(rows):
 
     cart_avg = sum(cart_times) // len(cart_times) if cart_times else None
     walker_avg = sum(walker_times) // len(walker_times) if walker_times else None
+    mixed_avg = sum(mixed_times) // len(mixed_times) if mixed_times else None
 
     return {
         "groups": total_groups,
@@ -220,6 +226,7 @@ def build_summary(rows):
         "average": minutes_to_time(avg),
         "cart_avg": minutes_to_time(cart_avg),
         "walker_avg": minutes_to_time(walker_avg),
+        "mixed_avg": minutes_to_time(mixed_avg),
     }
 
 
