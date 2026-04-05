@@ -26,6 +26,19 @@
             border-bottom: 1px solid #ddd;
         }
 
+        .top-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            gap: 30px;
+        }
+
+        .left-side {
+            display: flex;
+            flex-direction: column;
+            min-width: 360px;
+        }
+
         h1 {
             margin: 0 0 16px 0;
             font-size: 64px;
@@ -39,11 +52,22 @@
             flex-wrap: wrap;
         }
 
-        .top-bar a {
-            color: #0b57d0;
-            text-decoration: none;
-            font-weight: bold;
-            font-size: 18px;
+        .summary-box {
+            display: flex;
+            gap: 40px;
+            background: white;
+            padding: 16px 20px;
+            border-radius: 10px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+            min-width: 360px;
+        }
+
+        .summary-col {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            font-size: 15px;
+            line-height: 1.35;
         }
 
         .table-shell {
@@ -63,7 +87,7 @@
         .body-table-wrap {
             overflow-x: auto;
             overflow-y: auto;
-            max-height: calc(100vh - 300px);
+            max-height: calc(100vh - 320px);
             border-top: 0;
             border-radius: 0 0 8px 8px;
         }
@@ -157,7 +181,6 @@
             margin: 0;
         }
 
-        /* Match column widths across both tables */
         .col-time { width: 180px; }
         .col-group { width: 180px; }
         .col-players { width: 360px; }
@@ -174,14 +197,30 @@
 <body>
     <div class="page-shell">
         <div class="sticky-header">
-            <h1>Tee Sheet</h1>
+            <div class="top-row">
+                <div class="left-side">
+                    <h1>Tee Sheet</h1>
 
-            <div class="top-bar">
-                <a href="/">Upload Another Tee Sheet</a>
+                    <div class="top-bar">
+                        <form class="add-form" action="/add-reservation" method="POST">
+                            <button class="btn btn-add" type="submit">Add Reservation</button>
+                        </form>
+                    </div>
+                </div>
 
-                <form class="add-form" action="/add-reservation" method="POST">
-                    <button class="btn btn-add" type="submit">Add Reservation</button>
-                </form>
+                <div class="summary-box">
+                    <div class="summary-col">
+                        <div><strong>Fastest Round:</strong> {{ summary.fastest }}{% if summary.fastest_name %} ({{ summary.fastest_name }}){% endif %}</div>
+                        <div><strong>Slowest Round:</strong> {{ summary.slowest }}{% if summary.slowest_name %} ({{ summary.slowest_name }}){% endif %}</div>
+                        <div><strong>Average Pace:</strong> {{ summary.average }}</div>
+                    </div>
+
+                    <div class="summary-col">
+                        <div><strong>Groups:</strong> {{ summary.groups }}</div>
+                        <div><strong>Cart Average:</strong> {{ summary.cart_avg }}</div>
+                        <div><strong>Walker Average:</strong> {{ summary.walker_avg }}</div>
+                    </div>
+                </div>
             </div>
         </div>
 
