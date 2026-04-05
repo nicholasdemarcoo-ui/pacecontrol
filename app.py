@@ -66,23 +66,58 @@ def holes_for_rotation(rotation: str):
     return 18
 
 
+def time_to_minutes(time_str):
+    if not time_str:
+        return None
+
+    value = time_str.strip()
+
+    # Allows 405 -> 4:05, 355 -> 3:55, 1205 -> 12:05
+    if value.isdigit():
+        if len(value) == 3:
+            hours = int(value[0])
+            minutes = int(value[1:])
+        elif len(value) == 4:
+            hours = int(value[:2])
+            minutes = int(value[2:])
+        else:
+            return None
+
+        if minutes >= 60:
+            return None
+
+        return hours * 60 + minutes
+
+    match = re.match(r"^\s*(\d{1,2}):(\d{2})\s*$", value)
+    if match:
+        hours = int(match.group(1))
+        minutes = int(match.group(2))
+        if minutes >= 60:
+            return None
+        return hours * 60 + minutes
+
+    return None
+
+
+def minutes_to_time(minutes):
+    if minutes is None:
+        return ""
+
+    hours = minutes // 60
+    mins = minutes % 60
+    return f"{hours}:{mins:02d}"
+
+
 def build_average_hole(total_time: str, rotation: str):
-    if not total_time:
+    mins = time_to_minutes(total_time)
+    if mins is None:
         return ""
-
-    match = re.match(r"^\s*(\d{1,2}):(\d{2})\s*$", total_time)
-    if not match:
-        return ""
-
-    hours = int(match.group(1))
-    minutes = int(match.group(2))
-    total_minutes = hours * 60 + minutes
 
     holes = holes_for_rotation(rotation)
     if holes <= 0:
         return ""
 
-    avg_minutes = total_minutes / holes
+    avg_minutes = mins / holes
     avg_whole = int(avg_minutes)
     avg_seconds = int(round((avg_minutes - avg_whole) * 60))
 
@@ -131,28 +166,6 @@ def sort_rows():
     tee_sheet_rows.sort(key=lambda row: time_sort_key(row.get("reservation_time", "")))
 
 
-def time_to_minutes(time_str):
-    if not time_str:
-        return None
-
-    match = re.match(r"^\s*(\d{1,2}):(\d{2})\s*$", time_str)
-    if not match:
-        return None
-
-    hours = int(match.group(1))
-    minutes = int(match.group(2))
-    return hours * 60 + minutes
-
-
-def minutes_to_time(minutes):
-    if minutes is None:
-        return ""
-
-    hours = minutes // 60
-    mins = minutes % 60
-    return f"{hours}:{mins:02d}"
-
-
 def build_summary(rows):
     total_groups = len(rows)
 
@@ -180,9 +193,11 @@ def build_summary(rows):
         except Exception:
             continue
 
+        # Cart average = any group with at least 1 rider
         if riders > 0:
             cart_times.append(mins)
 
+        # Walker average = only all-walking groups
         if walkers == num_players:
             walker_times.append(mins)
 
@@ -342,7 +357,10 @@ def save_row(row_id):
     players = request.form.get("players", "").strip()
     walkers = request.form.get("walkers", "").strip()
     rotation = request.form.get("rotation", "").strip()
-    total_time = request.form.get("total_time", "").strip()
+
+    raw_time = request.form.get("total_time", "").strip()
+    mins = time_to_minutes(raw_time)
+    total_time = minutes_to_time(mins) if mins is not None else ""
 
     player_list = parse_players(players)
     num_players = len(player_list)
@@ -388,7 +406,7 @@ def delete_row(row_id):
         tee_sheet_rows.pop(row_id)
 
     sort_rows()
-    return redirect(url_for("tee_sheet"))
+    return redirect(url_for("tee-sheet"))
 
 
 if __name__ == "__main__":
