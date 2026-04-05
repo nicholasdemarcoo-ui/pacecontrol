@@ -131,6 +131,83 @@ def sort_rows():
     tee_sheet_rows.sort(key=lambda row: time_sort_key(row.get("reservation_time", "")))
 
 
+def time_to_minutes(time_str):
+    if not time_str:
+        return None
+
+    match = re.match(r"^\s*(\d{1,2}):(\d{2})\s*$", time_str)
+    if not match:
+        return None
+
+    hours = int(match.group(1))
+    minutes = int(match.group(2))
+    return hours * 60 + minutes
+
+
+def minutes_to_time(minutes):
+    if minutes is None:
+        return ""
+
+    hours = minutes // 60
+    mins = minutes % 60
+    return f"{hours}:{mins:02d}"
+
+
+def build_summary(rows):
+    total_groups = len(rows)
+
+    completed = []
+    cart_times = []
+    walker_times = []
+
+    for row in rows:
+        total_time = row.get("total_time", "")
+        mins = time_to_minutes(total_time)
+
+        if mins is None:
+            continue
+
+        completed.append((mins, row))
+
+        walkers = row.get("walkers")
+        riders = row.get("riders")
+        num_players = row.get("num_players")
+
+        try:
+            walkers = int(walkers)
+            riders = int(riders)
+            num_players = int(num_players)
+        except Exception:
+            continue
+
+        if riders > 0:
+            cart_times.append(mins)
+
+        if walkers == num_players:
+            walker_times.append(mins)
+
+    fastest = min(completed, default=None, key=lambda x: x[0])
+    slowest = max(completed, default=None, key=lambda x: x[0])
+
+    avg = None
+    if completed:
+        avg = sum(x[0] for x in completed) // len(completed)
+
+    cart_avg = sum(cart_times) // len(cart_times) if cart_times else None
+    walker_avg = sum(walker_times) // len(walker_times) if walker_times else None
+
+    return {
+        "groups": total_groups,
+        "fastest": minutes_to_time(fastest[0]) if fastest else "",
+        "fastest_name": fastest[1]["group_name"] if fastest else "",
+        "slowest": minutes_to_time(slowest[0]) if slowest else "",
+        "slowest_name": slowest[1]["group_name"] if slowest else "",
+        "average": minutes_to_time(avg),
+        "cart_avg": minutes_to_time(cart_avg),
+        "walker_avg": minutes_to_time(walker_avg),
+    }
+
+
 def parse_tee_sheet_pdf(pdf_path: str):
     rows = []
     doc = fitz.open(pdf_path)
@@ -220,11 +297,14 @@ def tee_sheet():
     except ValueError:
         edit_id = None
 
+    summary = build_summary(tee_sheet_rows)
+
     return render_template(
         "tee_sheet.html",
         rows=tee_sheet_rows,
         edit_id=edit_id,
-        player_count_options=player_count_options
+        player_count_options=player_count_options,
+        summary=summary
     )
 
 
