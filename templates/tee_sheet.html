@@ -36,13 +36,27 @@
         .left-side {
             display: flex;
             flex-direction: column;
-            min-width: 360px;
+            min-width: 420px;
+        }
+
+        .title-row {
+            display: flex;
+            align-items: baseline;
+            gap: 14px;
+            flex-wrap: wrap;
+            margin-bottom: 16px;
         }
 
         h1 {
-            margin: 0 0 16px 0;
+            margin: 0;
             font-size: 64px;
             line-height: 1;
+        }
+
+        .sheet-date {
+            font-size: 24px;
+            font-weight: 600;
+            color: #555;
         }
 
         .top-bar {
@@ -59,7 +73,7 @@
             padding: 16px 20px;
             border-radius: 10px;
             box-shadow: 0 2px 8px rgba(0,0,0,0.08);
-            min-width: 360px;
+            min-width: 380px;
         }
 
         .summary-col {
@@ -177,10 +191,16 @@
             color: white;
         }
 
+        .btn-print {
+            background: #2e7d32;
+            color: white;
+        }
+
         .add-form {
             margin: 0;
         }
 
+        .col-actions { width: 170px; }
         .col-time { width: 180px; }
         .col-group { width: 180px; }
         .col-players { width: 360px; }
@@ -191,7 +211,47 @@
         .col-rotation { width: 140px; }
         .col-total { width: 120px; }
         .col-average { width: 120px; }
-        .col-actions { width: 170px; }
+
+        @media print {
+            body {
+                background: white;
+            }
+
+            .sticky-header {
+                position: static;
+            }
+
+            .body-table-wrap {
+                max-height: none !important;
+                overflow: visible !important;
+            }
+
+            .header-table-wrap {
+                overflow: visible !important;
+            }
+
+            .table-shell {
+                box-shadow: none;
+            }
+
+            .btn,
+            .top-bar form,
+            .top-bar button {
+                display: none !important;
+            }
+
+            th {
+                background: #0b57d0 !important;
+                color: white !important;
+                -webkit-print-color-adjust: exact;
+                print-color-adjust: exact;
+            }
+
+            td, th {
+                font-size: 12px;
+                padding: 6px;
+            }
+        }
     </style>
 </head>
 <body>
@@ -199,12 +259,19 @@
         <div class="sticky-header">
             <div class="top-row">
                 <div class="left-side">
-                    <h1>Tee Sheet</h1>
+                    <div class="title-row">
+                        <h1>Tee Sheet</h1>
+                        {% if tee_sheet_date %}
+                            <div class="sheet-date">{{ tee_sheet_date }}</div>
+                        {% endif %}
+                    </div>
 
                     <div class="top-bar">
                         <form class="add-form" action="/add-reservation" method="POST">
                             <button class="btn btn-add" type="submit">Add Reservation</button>
                         </form>
+
+                        <button class="btn btn-print" type="button" onclick="window.print()">Print</button>
                     </div>
                 </div>
 
@@ -231,6 +298,7 @@
                 <table>
                     <thead>
                         <tr>
+                            <th class="col-actions">Actions</th>
                             <th class="col-time">Reservation Time</th>
                             <th class="col-group">Group Name</th>
                             <th class="col-players">Players</th>
@@ -241,7 +309,6 @@
                             <th class="col-rotation">Rotation</th>
                             <th class="col-total">Total Time</th>
                             <th class="col-average">Average/Hole</th>
-                            <th class="col-actions">Actions</th>
                         </tr>
                     </thead>
                 </table>
@@ -253,8 +320,14 @@
                         {% for row in rows %}
                         {% if edit_id == loop.index0 %}
                         <tr id="row-{{ loop.index0 }}" class="editing-row">
-                            <td class="col-time">
+                            <td class="col-actions">
                                 <form action="/save/{{ loop.index0 }}" method="POST">
+                                    <div class="actions">
+                                        <button class="btn btn-save" type="submit">Save</button>
+                                        <a class="btn btn-cancel" href="/tee-sheet#row-{{ loop.index0 }}">Cancel</a>
+                                    </div>
+                            </td>
+                            <td class="col-time">
                                     <input type="text" name="reservation_time" value="{{ row.reservation_time }}" placeholder="09:10 AM">
                             </td>
                             <td class="col-group">{{ row.group_name }}</td>
@@ -287,19 +360,21 @@
                                     </select>
                             </td>
                             <td class="col-total">
-                                    <input type="text" name="total_time" value="{{ row.total_time }}" placeholder="0:00">
+                                    <input type="text" name="total_time" value="{{ row.total_time }}" placeholder="4:05">
                             </td>
                             <td class="col-average">{{ row.average_hole }}</td>
-                            <td class="col-actions">
-                                    <div class="actions">
-                                        <button class="btn btn-save" type="submit">Save</button>
-                                        <a class="btn btn-cancel" href="/tee-sheet#row-{{ loop.index0 }}">Cancel</a>
-                                    </div>
                                 </form>
-                            </td>
                         </tr>
                         {% else %}
                         <tr id="row-{{ loop.index0 }}">
+                            <td class="col-actions">
+                                <div class="actions">
+                                    <a class="btn btn-edit" href="/tee-sheet?edit={{ loop.index0 }}#row-{{ loop.index0 }}">Edit</a>
+                                    <form action="/delete/{{ loop.index0 }}" method="POST" style="margin: 0;">
+                                        <button class="btn btn-delete" type="submit" onclick="return confirm('Delete this reservation?')">Delete</button>
+                                    </form>
+                                </div>
+                            </td>
                             <td class="col-time">{{ row.reservation_time }}</td>
                             <td class="col-group">{{ row.group_name }}</td>
                             <td class="col-players">{{ row.players }}</td>
@@ -310,14 +385,6 @@
                             <td class="col-rotation">{{ row.rotation }}</td>
                             <td class="col-total">{{ row.total_time }}</td>
                             <td class="col-average">{{ row.average_hole }}</td>
-                            <td class="col-actions">
-                                <div class="actions">
-                                    <a class="btn btn-edit" href="/tee-sheet?edit={{ loop.index0 }}#row-{{ loop.index0 }}">Edit</a>
-                                    <form action="/delete/{{ loop.index0 }}" method="POST" style="margin: 0;">
-                                        <button class="btn btn-delete" type="submit" onclick="return confirm('Delete this reservation?')">Delete</button>
-                                    </form>
-                                </div>
-                            </td>
                         </tr>
                         {% endif %}
                         {% endfor %}
