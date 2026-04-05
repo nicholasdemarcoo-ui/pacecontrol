@@ -10,15 +10,12 @@ tee_sheet_rows = []
 
 
 def parse_players(players_text: str):
-    players = [p.strip() for p in players_text.split(",") if p.strip()]
-    return players
+    return [p.strip() for p in players_text.split(",") if p.strip()]
 
 
 def build_group_name(players_text: str):
     players = parse_players(players_text)
-    if not players:
-        return ""
-    return f"{players[0]} Group"
+    return f"{players[0]} Group" if players else ""
 
 
 def build_group_type(num_players, walkers, riders):
@@ -71,9 +68,6 @@ def build_average_hole(total_time: str):
 
 
 def parse_tee_sheet_pdf(pdf_path: str):
-    import fitz
-    import re
-
     rows = []
     doc = fitz.open(pdf_path)
 
@@ -88,7 +82,6 @@ def parse_tee_sheet_pdf(pdf_path: str):
     time_pattern = re.compile(r"^\d{2}:\d{2}\s(?:AM|PM)$")
     player_pattern = re.compile(r"^[^,]+,\s*[^()]+\(.*\)$")
 
-    # Find every tee time line index
     time_indices = []
     for idx, line in enumerate(lines):
         if time_pattern.match(line):
@@ -97,7 +90,6 @@ def parse_tee_sheet_pdf(pdf_path: str):
     for n, start_idx in enumerate(time_indices):
         reservation_time = lines[start_idx]
 
-        # Stop before notes/footer
         if reservation_time == "06:30 PM":
             break
 
@@ -111,7 +103,6 @@ def parse_tee_sheet_pdf(pdf_path: str):
                 clean_name = re.sub(r"\s*\([^)]+\)", "", line).strip()
                 player_names.append(clean_name)
 
-        # If no player names, treat it as empty and skip
         if not player_names:
             continue
 
@@ -132,6 +123,7 @@ def parse_tee_sheet_pdf(pdf_path: str):
 
     return rows
 
+
 @app.route("/")
 def home():
     return render_template("index.html")
@@ -142,7 +134,6 @@ def upload_pdf():
     global tee_sheet_rows
 
     pdf_file = request.files.get("tee_sheet_pdf")
-
     if not pdf_file or pdf_file.filename == "":
         return redirect(url_for("home"))
 
@@ -151,54 +142,54 @@ def upload_pdf():
     pdf_file.save(save_path)
 
     tee_sheet_rows = parse_tee_sheet_pdf(save_path)
-
     return redirect(url_for("tee_sheet"))
 
 
 @app.route("/tee-sheet")
 def tee_sheet():
-    return render_template("tee_sheet.html", rows=tee_sheet_rows)
+    edit_id = request.args.get("edit")
+    try:
+        edit_id = int(edit_id) if edit_id is not None else None
+    except ValueError:
+        edit_id = None
+
+    return render_template("tee_sheet.html", rows=tee_sheet_rows, edit_id=edit_id)
 
 
-@app.route("/edit/<int:row_id>", methods=["GET", "POST"])
-def edit_row(row_id):
+@app.route("/save/<int:row_id>", methods=["POST"])
+def save_row(row_id):
     global tee_sheet_rows
 
     if row_id < 0 or row_id >= len(tee_sheet_rows):
         return redirect(url_for("tee_sheet"))
 
-    row = tee_sheet_rows[row_id]
+    reservation_time = request.form.get("reservation_time", "").strip()
+    players = request.form.get("players", "").strip()
+    walkers = request.form.get("walkers", "").strip()
+    riders = request.form.get("riders", "").strip()
+    rotation = request.form.get("rotation", "").strip()
+    total_time = request.form.get("total_time", "").strip()
 
-    if request.method == "POST":
-        reservation_time = request.form.get("reservation_time", "").strip()
-        players = request.form.get("players", "").strip()
-        walkers = request.form.get("walkers", "").strip()
-        riders = request.form.get("riders", "").strip()
-        rotation = request.form.get("rotation", "").strip()
-        total_time = request.form.get("total_time", "").strip()
+    player_list = parse_players(players)
+    num_players = len(player_list)
+    group_name = build_group_name(players)
+    group_type = build_group_type(num_players, walkers, riders)
+    average_hole = build_average_hole(total_time)
 
-        player_list = parse_players(players)
-        num_players = len(player_list)
-        group_name = build_group_name(players)
-        group_type = build_group_type(num_players, walkers, riders)
-        average_hole = build_average_hole(total_time)
+    tee_sheet_rows[row_id] = {
+        "reservation_time": reservation_time,
+        "group_name": group_name,
+        "players": players,
+        "num_players": num_players,
+        "walkers": walkers,
+        "riders": riders,
+        "group_type": group_type,
+        "rotation": rotation,
+        "total_time": total_time,
+        "average_hole": average_hole
+    }
 
-        tee_sheet_rows[row_id] = {
-            "reservation_time": reservation_time,
-            "group_name": group_name,
-            "players": players,
-            "num_players": num_players,
-            "walkers": walkers,
-            "riders": riders,
-            "group_type": group_type,
-            "rotation": rotation,
-            "total_time": total_time,
-            "average_hole": average_hole
-        }
-
-        return redirect(url_for("tee_sheet"))
-
-    return render_template("edit_row.html", row=row, row_id=row_id)
+    return redirect(url_for("tee_sheet"))
 
 
 @app.route("/delete/<int:row_id>", methods=["POST"])
