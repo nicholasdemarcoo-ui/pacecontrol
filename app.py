@@ -16,9 +16,9 @@ def test_db():
             cursor = conn.cursor()
             cursor.execute("SELECT 1")
             row = cursor.fetchone()
-        return f"Database connected! Result: {row[0]}"
+    return f"Database connected! Result: {row[0]}"
     except Exception as e:
-        return f"Error: {e}"
+    return f"Error: {e}"
 
 def parse_players(players_text: str):
     return [p.strip() for p in players_text.split(",") if p.strip()]
