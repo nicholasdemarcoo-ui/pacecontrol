@@ -88,7 +88,7 @@ def sort_rows_by_time(rows):
         if not value:
             return datetime.max
 
-        for fmt in ("%I:%M %p", "%H:%M"):
+        for fmt in ("%I:%M %p", "%H:%M", "%I:%M"):
             try:
                 return datetime.strptime(value, fmt)
             except ValueError:
@@ -114,17 +114,26 @@ def format_total_time(value):
     return value
 
 
+def format_reservation_time(value):
+    value = (value or "").strip()
+    digits = "".join(ch for ch in value if ch.isdigit())
+
+    if len(digits) == 3:
+        return f"{digits[0]}:{digits[1:]}"
+    if len(digits) == 4:
+        return f"{digits[:2]}:{digits[2:]}"
+    return value
+
+
 def apply_derived_fields(row):
     players_text = (row.get("players") or "").strip()
     player_list = [p.strip() for p in players_text.split(",") if p.strip()]
 
-    # num players
     if player_list:
         row["num_players"] = str(len(player_list))
     else:
         row["num_players"] = str(row.get("num_players") or "").strip()
 
-    # riders
     walkers = str(row.get("walkers") or "").strip()
     try:
         num_players_int = int(row.get("num_players") or 0)
@@ -136,7 +145,6 @@ def apply_derived_fields(row):
     except Exception:
         row["riders"] = ""
 
-    # group type
     if walkers == "":
         row["group_type"] = ""
     else:
@@ -153,7 +161,6 @@ def apply_derived_fields(row):
         except Exception:
             row["group_type"] = ""
 
-    # rotation
     front = str(row.get("front") or "").strip()
     back = str(row.get("back") or "").strip()
 
@@ -167,10 +174,9 @@ def apply_derived_fields(row):
         row["rotation"] = ""
         holes = 0
 
-    # total time formatting
     row["total_time"] = format_total_time(row.get("total_time") or "")
+    row["reservation_time"] = format_reservation_time(row.get("reservation_time") or "")
 
-    # average per hole
     total_time = row["total_time"]
     row["average_hole"] = ""
 
@@ -255,7 +261,6 @@ def calculate_summary(rows):
         except Exception:
             riders = None
 
-        # Summary box pace stats: ONLY 18-hole rounds
         if is_18_holes and total_minutes is not None:
             valid_rounds.append((total_minutes, row.get("group_name", "")))
 
@@ -267,7 +272,6 @@ def calculate_summary(rows):
                 elif walkers > 0 and riders > 0:
                     mixed_rounds.append(total_minutes)
 
-        # Print rotation averages also use only 18-hole rotation rows
         rotation = (row.get("rotation") or "").strip()
         if is_18_holes and rotation in rotation_buckets and total_minutes is not None:
             rotation_buckets[rotation].append(total_minutes)
@@ -333,7 +337,6 @@ def extract_pdf_text(path):
     while i < len(lines):
         line = lines[i]
 
-        # Case 1: normal tee time line by itself
         if time_only_pattern.match(line):
             reservation_time = line
             i += 1
@@ -376,7 +379,6 @@ def extract_pdf_text(path):
                 })
             continue
 
-        # Case 2: compressed one-line row
         inline_time_match = inline_time_pattern.match(line)
         if inline_time_match:
             reservation_time = inline_time_match.group(1)
@@ -509,7 +511,8 @@ def save(index):
     players_text = (request.form.get("players") or "").strip()
     player_list = [p.strip() for p in players_text.split(",") if p.strip()]
 
-    row["reservation_time"] = request.form.get("reservation_time", "").strip()
+    raw_time = (request.form.get("reservation_time") or "").strip()
+    row["reservation_time"] = format_reservation_time(raw_time)
     row["players"] = players_text
     row["num_players"] = str(len(player_list))
     row["group_name"] = f"{player_list[0]} Group" if player_list else ""
