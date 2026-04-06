@@ -589,22 +589,6 @@ def delete_row(row_id):
 
     return redirect(url_for("tee_sheet"))
 
-    @app.route("/clear-tee-sheet", methods=["POST"])
-def clear_tee_sheet():
-    with SessionLocal() as db:
-        sheet = get_latest_sheet(db)
-
-        if sheet:
-            # Delete all rows tied to this sheet
-            db.query(TeeSheetRow).filter(
-                TeeSheetRow.tee_sheet_id == sheet.id
-            ).delete()
-
-            db.commit()
-
-    return redirect(url_for("home"))
-
-
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 10000))
     app.run(host="0.0.0.0", port=port)
