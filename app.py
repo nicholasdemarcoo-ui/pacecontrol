@@ -114,6 +114,13 @@ def extract_pdf_text(path):
 
 
 # ---------------- ROUTES ----------------
+@app.route("/")
+def home():
+    data = load_data()
+    return render_template(
+        "index.html",
+        has_sheet=len(data["rows"]) > 0
+    )
 
 @app.route("/upload", methods=["POST"])
 def upload():
@@ -141,6 +148,7 @@ def upload():
     os.remove(temp_path)
 
     return redirect("/tee-sheet")
+
 
 @app.route("/tee-sheet")
 def tee_sheet():
