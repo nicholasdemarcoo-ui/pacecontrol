@@ -3,16 +3,15 @@ import re
 import fitz
 from datetime import datetime
 from flask import Flask, render_template, request, redirect, url_for
+
 from db import SessionLocal
 from init_db import init_db
 from models import TeeSheet, TeeSheetRow
 
 app = Flask(__name__)
-init_db()
 app.config["UPLOAD_FOLDER"] = "uploads"
 
-tee_sheet_rows = []
-tee_sheet_date = ""
+init_db()
 
 
 def parse_players(players_text: str):
@@ -89,6 +88,7 @@ def time_to_minutes(time_str):
 
     value = time_str.strip()
 
+    # Allows 405 -> 4:05, 355 -> 3:55, 1205 -> 12:05
     if value.isdigit():
         if len(value) == 3:
             hours = int(value[0])
@@ -169,17 +169,13 @@ def normalize_reservation_time(time_str):
 def time_sort_key(time_str):
     normalized = normalize_reservation_time(time_str)
     if not normalized:
-        return datetime.max
+        # Keep blank/new rows at the top while editing
+        return datetime.min
 
     try:
         return datetime.strptime(normalized, "%I:%M %p")
     except ValueError:
         return datetime.max
-
-
-def sort_rows():
-    global tee_sheet_rows
-    tee_sheet_rows.sort(key=lambda row: time_sort_key(row.get("reservation_time", "")))
 
 
 def extract_sheet_date(full_text: str):
@@ -342,7 +338,6 @@ def parse_tee_sheet_pdf(pdf_path: str):
             "num_players": len(last_names),
             "walkers": "",
             "riders": "",
-            "group_type": "",
             "front": "",
             "back": "",
             "rotation": "",
@@ -354,6 +349,55 @@ def parse_tee_sheet_pdf(pdf_path: str):
     return rows, parsed_date
 
 
+def get_latest_sheet(db):
+    return (
+        db.query(TeeSheet)
+        .order_by(TeeSheet.created_at.desc(), TeeSheet.id.desc())
+        .first()
+    )
+
+
+def get_or_create_sheet_by_date(db, sheet_date: str):
+    if not sheet_date:
+        sheet_date = datetime.now().strftime("%m/%d/%Y")
+
+    sheet = db.query(TeeSheet).filter(TeeSheet.sheet_date == sheet_date).first()
+    if sheet:
+        return sheet
+
+    sheet = TeeSheet(sheet_date=sheet_date)
+    db.add(sheet)
+    db.commit()
+    db.refresh(sheet)
+    return sheet
+
+
+def row_model_to_dict(row: TeeSheetRow):
+    group_type = build_group_type(row.num_players, row.walkers, row.riders)
+
+    return {
+        "id": row.id,
+        "reservation_time": row.reservation_time or "",
+        "group_name": row.group_name or "",
+        "players": row.players or "",
+        "num_players": row.num_players or 0,
+        "walkers": row.walkers or "",
+        "riders": row.riders or "",
+        "group_type": group_type,
+        "front": row.front or "",
+        "back": row.back or "",
+        "rotation": row.rotation or "",
+        "total_time": row.total_time or "",
+        "average_hole": row.average_hole or "",
+    }
+
+
+def get_sheet_rows_as_dicts(db, sheet: TeeSheet):
+    rows = [row_model_to_dict(r) for r in sheet.rows]
+    rows.sort(key=lambda row: time_sort_key(row.get("reservation_time", "")))
+    return rows
+
+
 @app.route("/")
 def home():
     return render_template("index.html")
@@ -361,8 +405,6 @@ def home():
 
 @app.route("/upload", methods=["POST"])
 def upload_pdf():
-    global tee_sheet_rows, tee_sheet_date
-
     pdf_file = request.files.get("tee_sheet_pdf")
     if not pdf_file or pdf_file.filename == "":
         return redirect(url_for("home"))
@@ -371,8 +413,33 @@ def upload_pdf():
     save_path = os.path.join(app.config["UPLOAD_FOLDER"], pdf_file.filename)
     pdf_file.save(save_path)
 
-    tee_sheet_rows, tee_sheet_date = parse_tee_sheet_pdf(save_path)
-    sort_rows()
+    parsed_rows, parsed_date = parse_tee_sheet_pdf(save_path)
+
+    with SessionLocal() as db:
+        sheet = get_or_create_sheet_by_date(db, parsed_date)
+
+        # Replace rows for this sheet from the uploaded PDF
+        db.query(TeeSheetRow).filter(TeeSheetRow.tee_sheet_id == sheet.id).delete()
+
+        for row in parsed_rows:
+            db.add(
+                TeeSheetRow(
+                    tee_sheet_id=sheet.id,
+                    reservation_time=row["reservation_time"],
+                    group_name=row["group_name"],
+                    players=row["players"],
+                    num_players=row["num_players"],
+                    walkers=row["walkers"],
+                    riders=row["riders"],
+                    front=row["front"],
+                    back=row["back"],
+                    rotation=row["rotation"],
+                    total_time=row["total_time"],
+                    average_hole=row["average_hole"],
+                )
+            )
+
+        db.commit()
 
     return redirect(url_for("tee_sheet"))
 
@@ -385,107 +452,133 @@ def tee_sheet():
     except ValueError:
         edit_id = None
 
-    summary = build_summary(tee_sheet_rows)
+    with SessionLocal() as db:
+        sheet = get_latest_sheet(db)
 
-    return render_template(
-        "tee_sheet.html",
-        rows=tee_sheet_rows,
-        edit_id=edit_id,
-        player_count_options=player_count_options,
-        summary=summary,
-        tee_sheet_date=tee_sheet_date
-    )
+        if not sheet:
+            return render_template(
+                "tee_sheet.html",
+                rows=[],
+                edit_id=edit_id,
+                player_count_options=player_count_options,
+                summary=build_summary([]),
+                tee_sheet_date=""
+            )
+
+        rows = get_sheet_rows_as_dicts(db, sheet)
+        summary = build_summary(rows)
+
+        return render_template(
+            "tee_sheet.html",
+            rows=rows,
+            edit_id=edit_id,
+            player_count_options=player_count_options,
+            summary=summary,
+            tee_sheet_date=sheet.sheet_date
+        )
 
 
 @app.route("/add-reservation", methods=["POST"])
 def add_reservation():
-    global tee_sheet_rows
+    with SessionLocal() as db:
+        sheet = get_latest_sheet(db)
 
-    new_row = {
-        "reservation_time": "",
-        "group_name": "",
-        "players": "",
-        "num_players": 0,
-        "walkers": "",
-        "riders": "",
-        "group_type": "",
-        "front": "",
-        "back": "",
-        "rotation": "",
-        "total_time": "",
-        "average_hole": ""
-    }
+        if not sheet:
+            sheet = get_or_create_sheet_by_date(db, datetime.now().strftime("%m/%d/%Y"))
 
-    tee_sheet_rows.insert(0, new_row)
+        new_row = TeeSheetRow(
+            tee_sheet_id=sheet.id,
+            reservation_time="",
+            group_name="",
+            players="",
+            num_players=0,
+            walkers="",
+            riders="",
+            front="",
+            back="",
+            rotation="",
+            total_time="",
+            average_hole=""
+        )
+        db.add(new_row)
+        db.commit()
+
     return redirect(url_for("tee_sheet", edit=0))
 
 
 @app.route("/save/<int:row_id>", methods=["POST"])
 def save_row(row_id):
-    global tee_sheet_rows
+    with SessionLocal() as db:
+        sheet = get_latest_sheet(db)
+        if not sheet:
+            return redirect(url_for("tee_sheet"))
 
-    if row_id < 0 or row_id >= len(tee_sheet_rows):
-        return redirect(url_for("tee_sheet"))
+        rows = sorted(sheet.rows, key=lambda r: time_sort_key(r.reservation_time or ""))
+        if row_id < 0 or row_id >= len(rows):
+            return redirect(url_for("tee_sheet"))
 
-    reservation_time = normalize_reservation_time(
-        request.form.get("reservation_time", "").strip()
-    )
-    players = request.form.get("players", "").strip()
-    walkers = request.form.get("walkers", "").strip()
-    front = request.form.get("front", "").strip()
-    back = request.form.get("back", "").strip()
+        row = rows[row_id]
 
-    raw_time = request.form.get("total_time", "").strip()
-    mins = time_to_minutes(raw_time)
-    total_time = minutes_to_time(mins) if mins is not None else ""
+        reservation_time = normalize_reservation_time(
+            request.form.get("reservation_time", "").strip()
+        )
+        players = request.form.get("players", "").strip()
+        walkers = request.form.get("walkers", "").strip()
+        front = request.form.get("front", "").strip()
+        back = request.form.get("back", "").strip()
 
-    player_list = parse_players(players)
-    num_players = len(player_list)
-    group_name = build_group_name(players)
+        raw_time = request.form.get("total_time", "").strip()
+        mins = time_to_minutes(raw_time)
+        total_time = minutes_to_time(mins) if mins is not None else ""
 
-    if walkers == "":
-        riders = ""
-    else:
-        try:
-            walkers_int = int(walkers)
-            walkers_int = max(0, min(walkers_int, num_players))
-            walkers = str(walkers_int)
-            riders = str(num_players - walkers_int)
-        except ValueError:
-            walkers = ""
+        player_list = parse_players(players)
+        num_players = len(player_list)
+        group_name = build_group_name(players)
+
+        if walkers == "":
             riders = ""
+        else:
+            try:
+                walkers_int = int(walkers)
+                walkers_int = max(0, min(walkers_int, num_players))
+                walkers = str(walkers_int)
+                riders = str(num_players - walkers_int)
+            except ValueError:
+                walkers = ""
+                riders = ""
 
-    group_type = build_group_type(num_players, walkers, riders)
-    rotation = build_rotation(front, back)
-    average_hole = build_average_hole(total_time, rotation)
+        rotation = build_rotation(front, back)
+        average_hole = build_average_hole(total_time, rotation)
 
-    tee_sheet_rows[row_id] = {
-        "reservation_time": reservation_time,
-        "group_name": group_name,
-        "players": players,
-        "num_players": num_players,
-        "walkers": walkers,
-        "riders": riders,
-        "group_type": group_type,
-        "front": front,
-        "back": back,
-        "rotation": rotation,
-        "total_time": total_time,
-        "average_hole": average_hole
-    }
+        row.reservation_time = reservation_time
+        row.group_name = group_name
+        row.players = players
+        row.num_players = num_players
+        row.walkers = walkers
+        row.riders = riders
+        row.front = front
+        row.back = back
+        row.rotation = rotation
+        row.total_time = total_time
+        row.average_hole = average_hole
 
-    sort_rows()
+        db.commit()
+
     return redirect(url_for("tee_sheet"))
 
 
 @app.route("/delete/<int:row_id>", methods=["POST"])
 def delete_row(row_id):
-    global tee_sheet_rows
+    with SessionLocal() as db:
+        sheet = get_latest_sheet(db)
+        if not sheet:
+            return redirect(url_for("tee_sheet"))
 
-    if 0 <= row_id < len(tee_sheet_rows):
-        tee_sheet_rows.pop(row_id)
+        rows = sorted(sheet.rows, key=lambda r: time_sort_key(r.reservation_time or ""))
+        if 0 <= row_id < len(rows):
+            db.delete(rows[row_id])
+            db.commit()
 
-    sort_rows()
     return redirect(url_for("tee_sheet"))
 
 
