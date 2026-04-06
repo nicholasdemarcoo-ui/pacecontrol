@@ -548,10 +548,10 @@
                                     {% endfor %}
                                 </select>
                             </td>
-                            <td class="col-riders">Auto</td>
-                            <td class="col-type">{{ row.group_type }}</td>
+                            <td class="col-riders">{{ row.riders if row.riders else "Auto" }}</td>
+                            <td class="col-type">{{ row.group_type if row.group_type else "Auto" }}</td>
                             <td class="col-front">
-                                <select name="front">
+                                <select name="front" class="front-select">
                                     <option value="" {% if row.front == "" %}selected{% endif %}></option>
                                     <option value="South" {% if row.front == "South" %}selected{% endif %}>South</option>
                                     <option value="East" {% if row.front == "East" %}selected{% endif %}>East</option>
@@ -559,16 +559,13 @@
                                 </select>
                             </td>
                             <td class="col-back">
-                                <select name="back">
+                                <select name="back" class="back-select" data-current="{{ row.back }}">
                                     <option value="" {% if row.back == "" %}selected{% endif %}></option>
-                                    <option value="South" {% if row.back == "South" %}selected{% endif %}>South</option>
-                                    <option value="East" {% if row.back == "East" %}selected{% endif %}>East</option>
-                                    <option value="West" {% if row.back == "West" %}selected{% endif %}>West</option>
                                 </select>
                             </td>
-                            <td class="col-rotation">{{ row.rotation }}</td>
+                            <td class="col-rotation">{{ row.rotation if row.rotation else "Auto" }}</td>
                             <td class="col-total">
-                                <input type="text" name="total_time" value="{{ row.total_time }}" placeholder="4:05">
+                                <input type="text" name="total_time" value="{{ row.total_time }}" placeholder="4:05" class="total-time-input">
                             </td>
                             <td class="col-average">{{ row.average_hole }}</td>
                                 </form>
@@ -613,49 +610,107 @@
     </div>
 
     <script>
-    const headerScroll = document.getElementById("headerScroll");
-    const bodyScroll = document.getElementById("bodyScroll");
+        const headerScroll = document.getElementById("headerScroll");
+        const bodyScroll = document.getElementById("bodyScroll");
 
-    if (headerScroll && bodyScroll) {
-        bodyScroll.addEventListener("scroll", () => {
-            headerScroll.scrollLeft = bodyScroll.scrollLeft;
+        if (headerScroll && bodyScroll) {
+            bodyScroll.addEventListener("scroll", () => {
+                headerScroll.scrollLeft = bodyScroll.scrollLeft;
+            });
+        }
+
+        if (window.location.hash) {
+            const el = document.querySelector(window.location.hash);
+            if (el) {
+                setTimeout(() => {
+                    el.scrollIntoView({ behavior: "smooth", block: "center" });
+                }, 100);
+            }
+        }
+
+        let lastVersion = null;
+        const isEditing = document.body.dataset.editing === "true";
+
+        async function checkForUpdates() {
+            try {
+                const response = await fetch("/api/version");
+                const data = await response.json();
+
+                if (lastVersion === null) {
+                    lastVersion = data.version;
+                    return;
+                }
+
+                if (data.version !== lastVersion) {
+                    window.location.reload();
+                }
+            } catch (error) {
+                console.error("Version check failed:", error);
+            }
+        }
+
+        function getBackOptions(frontValue) {
+            if (frontValue === "West") return ["East", "South"];
+            if (frontValue === "South") return ["East", "West"];
+            if (frontValue === "East") return ["West", "South"];
+            return [];
+        }
+
+        function updateBackOptions(frontSelect, backSelect) {
+            const currentValue = backSelect.dataset.current || backSelect.value || "";
+            const frontValue = frontSelect.value;
+            const options = getBackOptions(frontValue);
+
+            backSelect.innerHTML = '<option value=""></option>';
+
+            options.forEach(optionValue => {
+                const option = document.createElement("option");
+                option.value = optionValue;
+                option.textContent = optionValue;
+
+                if (optionValue === currentValue) {
+                    option.selected = true;
+                }
+
+                backSelect.appendChild(option);
+            });
+
+            if (!options.includes(currentValue)) {
+                backSelect.value = "";
+                backSelect.dataset.current = "";
+            }
+        }
+
+        document.querySelectorAll(".front-select").forEach(frontSelect => {
+            const row = frontSelect.closest("tr");
+            const backSelect = row.querySelector(".back-select");
+
+            if (backSelect) {
+                updateBackOptions(frontSelect, backSelect);
+
+                frontSelect.addEventListener("change", () => {
+                    backSelect.dataset.current = "";
+                    updateBackOptions(frontSelect, backSelect);
+                });
+            }
         });
-    }
 
-    if (window.location.hash) {
-        const el = document.querySelector(window.location.hash);
-        if (el) {
-            setTimeout(() => {
-                el.scrollIntoView({ behavior: "smooth", block: "center" });
-            }, 100);
+        document.querySelectorAll(".total-time-input").forEach(input => {
+            input.addEventListener("blur", () => {
+                const digits = input.value.replace(/\D/g, "");
+
+                if (digits.length === 3) {
+                    input.value = `${digits[0]}:${digits.slice(1)}`;
+                } else if (digits.length === 4) {
+                    input.value = `${digits.slice(0, 2)}:${digits.slice(2)}`;
+                }
+            });
+        });
+
+        if (!isEditing) {
+            checkForUpdates();
+            setInterval(checkForUpdates, 3000);
         }
-    }
-
-    let lastVersion = null;
-    const isEditing = document.body.dataset.editing === "true";
-
-    async function checkForUpdates() {
-        try {
-            const response = await fetch("/api/version");
-            const data = await response.json();
-
-            if (lastVersion === null) {
-                lastVersion = data.version;
-                return;
-            }
-
-            if (data.version !== lastVersion) {
-                window.location.reload();
-            }
-        } catch (error) {
-            console.error("Version check failed:", error);
-        }
-    }
-
-    if (!isEditing) {
-        checkForUpdates();
-        setInterval(checkForUpdates, 3000);
-    }
     </script>
 </body>
 </html>

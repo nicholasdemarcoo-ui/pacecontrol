@@ -57,7 +57,15 @@ def save_data(data):
         json.dump(data, f)
 
 
-# ---------------- NEW VERSION ROUTE ----------------
+# ---------------- API ROUTES ----------------
+
+@app.route("/api/status")
+def api_status():
+    data = load_data()
+    return jsonify({
+        "has_sheet": len(data["rows"]) > 0
+    })
+
 
 @app.route("/api/version")
 def api_version():
@@ -95,6 +103,67 @@ def player_count_options(num):
     return list(range(0, int(num) + 1)) if str(num).isdigit() else [0, 1, 2, 3, 4]
 
 
+def format_total_time(value):
+    value = (value or "").strip()
+    digits = "".join(ch for ch in value if ch.isdigit())
+
+    if len(digits) == 3:
+        return f"{digits[0]}:{digits[1:]}"
+    if len(digits) == 4:
+        return f"{digits[:2]}:{digits[2:]}"
+    return value
+
+
+def apply_derived_fields(row):
+    players_text = (row.get("players") or "").strip()
+    player_list = [p.strip() for p in players_text.split(",") if p.strip()]
+
+    # num players
+    if player_list:
+        row["num_players"] = str(len(player_list))
+    else:
+        row["num_players"] = str(row.get("num_players") or "").strip()
+
+    # riders
+    walkers = str(row.get("walkers") or "").strip()
+    try:
+        num_players_int = int(row.get("num_players") or 0)
+        walkers_int = int(walkers) if walkers != "" else None
+        if walkers_int is not None:
+            row["riders"] = str(num_players_int - walkers_int)
+        else:
+            row["riders"] = ""
+    except Exception:
+        row["riders"] = ""
+
+    # group type
+    if walkers == "":
+        row["group_type"] = ""
+    else:
+        try:
+            walkers_int = int(walkers)
+            num_players_int = int(row.get("num_players") or 0)
+
+            if walkers_int == 0:
+                row["group_type"] = "Ride"
+            elif walkers_int == num_players_int:
+                row["group_type"] = "Walk"
+            else:
+                row["group_type"] = "Mixed"
+        except Exception:
+            row["group_type"] = ""
+
+    # rotation
+    front = str(row.get("front") or "").strip()
+    back = str(row.get("back") or "").strip()
+    row["rotation"] = f"{front}-{back}" if front and back else ""
+
+    # total time formatting
+    row["total_time"] = format_total_time(row.get("total_time") or "")
+
+    return row
+
+
 def calculate_summary(rows):
     return {
         "groups": len(rows),
@@ -106,7 +175,17 @@ def calculate_summary(rows):
         "cart_avg": "-",
         "walker_avg": "-",
         "mixed_avg": "-",
-        "rotation_pace": {}
+        "rotation_pace": {
+            "South-East": "-",
+            "South-West": "-",
+            "East-West": "-",
+            "East-South": "-",
+            "West-East": "-",
+            "West-South": "-",
+            "South": "-",
+            "West": "-",
+            "East": "-"
+        }
     }
 
 
@@ -114,7 +193,9 @@ def extract_pdf_text(path):
     rows = []
 
     time_only_pattern = re.compile(r"^\d{2}:\d{2}\s[AP]M$")
+    inline_time_pattern = re.compile(r"^(\d{2}:\d{2}\s[AP]M)\b")
     last_name_pattern = re.compile(r"^([A-Za-z'`\- ]+),\s")
+    inline_last_name_pattern = re.compile(r"([A-Za-z'`\- ]+),\s+[A-Za-z]")
 
     with fitz.open(path) as doc:
         lines = []
@@ -128,9 +209,14 @@ def extract_pdf_text(path):
     while i < len(lines):
         line = lines[i]
 
+        # Case 1: normal tee time line by itself
         if time_only_pattern.match(line):
             reservation_time = line
             i += 1
+
+            if i < len(lines) and lines[i] == "E":
+                i += 1
+                continue
 
             player_last_names = []
 
@@ -138,6 +224,9 @@ def extract_pdf_text(path):
                 current = lines[i]
 
                 if time_only_pattern.match(current):
+                    break
+
+                if inline_time_pattern.match(current):
                     break
 
                 name_match = last_name_pattern.match(current)
@@ -154,6 +243,7 @@ def extract_pdf_text(path):
                     "num_players": str(len(player_last_names)),
                     "walkers": "",
                     "riders": "",
+                    "group_type": "",
                     "front": "",
                     "back": "",
                     "rotation": "",
@@ -161,6 +251,35 @@ def extract_pdf_text(path):
                     "average_hole": ""
                 })
             continue
+
+        # Case 2: compressed one-line row
+        inline_time_match = inline_time_pattern.match(line)
+        if inline_time_match:
+            reservation_time = inline_time_match.group(1)
+
+            if re.search(r"\bE\b", line):
+                i += 1
+                continue
+
+            inline_last_names = []
+            for match in inline_last_name_pattern.finditer(line):
+                inline_last_names.append(match.group(1).strip())
+
+            if inline_last_names:
+                rows.append({
+                    "reservation_time": reservation_time,
+                    "group_name": f"{inline_last_names[0]} Group",
+                    "players": ", ".join(inline_last_names),
+                    "num_players": str(len(inline_last_names)),
+                    "walkers": "",
+                    "riders": "",
+                    "group_type": "",
+                    "front": "",
+                    "back": "",
+                    "rotation": "",
+                    "total_time": "",
+                    "average_hole": ""
+                })
 
         i += 1
 
@@ -174,7 +293,11 @@ def home():
     data = load_data()
     return render_template(
         "index.html",
-        has_sheet=len(data["rows"]) > 0
+        has_sheet=len(data["rows"]) > 0,
+        db_status="Connected",
+        upload_status=None,
+        uploaded_filename=None,
+        extracted_text=None
     )
 
 
@@ -211,6 +334,9 @@ def upload():
 def tee_sheet():
     data = load_data()
 
+    for row in data["rows"]:
+        apply_derived_fields(row)
+
     edit_id = request.args.get("edit")
     edit_id = int(edit_id) if edit_id is not None else None
 
@@ -222,6 +348,8 @@ def tee_sheet():
         edit_id=edit_id,
         player_count_options=player_count_options
     )
+
+
 @app.route("/add-reservation", methods=["POST"])
 def add_reservation():
     data = load_data()
@@ -261,10 +389,12 @@ def save(index):
     row["players"] = players_text
     row["num_players"] = str(len(player_list))
     row["group_name"] = f"{player_list[0]} Group" if player_list else ""
-    row["walkers"] = request.form.get("walkers", "")
-    row["front"] = request.form.get("front", "")
-    row["back"] = request.form.get("back", "")
-    row["total_time"] = request.form.get("total_time", "")
+    row["walkers"] = request.form.get("walkers", "").strip()
+    row["front"] = request.form.get("front", "").strip()
+    row["back"] = request.form.get("back", "").strip()
+    row["total_time"] = (request.form.get("total_time") or "").strip()
+
+    apply_derived_fields(row)
 
     sort_rows_by_time(data["rows"])
     save_data(data)
@@ -287,8 +417,7 @@ def delete(index):
 def clear():
     if os.path.exists(STATE_FILE):
         os.remove(STATE_FILE)
-    return redirect("/")    
-
+    return redirect("/")
 
 
 # ---------------- RUN ----------------
