@@ -2,6 +2,8 @@ from os import getenv
 from dotenv import load_dotenv
 from mssql_python import connect
 
+app = Flask(_name_)
+
 load_dotenv()
 
 def get_connection():
