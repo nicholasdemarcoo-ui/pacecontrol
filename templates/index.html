@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Pace Control</title>
+    <title>Course Report</title>
 
     <style>
         body {
@@ -132,8 +132,8 @@
 
     <div class="container">
 
-        <h1>Pace Control</h1>
-        <div class="subtitle">Tee Sheet Manager</div>
+        <h1>Tee Sheet & Pace Report</h1>
+        <div class="subtitle">Track Groups and their Pace</div>
 
         <div class="status-box">
             <div class="status-line"><strong>Database:</strong> {{ db_status or "Not checked yet" }}</div>
@@ -154,8 +154,6 @@
                 Upload Tee Sheet
             </button>
         </form>
-
-        <div class="divider">or</div>
 
         {% if extracted_text %}
             <button class="btn btn-open btn-disabled" disabled>
