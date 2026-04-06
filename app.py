@@ -156,10 +156,38 @@ def apply_derived_fields(row):
     # rotation
     front = str(row.get("front") or "").strip()
     back = str(row.get("back") or "").strip()
-    row["rotation"] = f"{front}-{back}" if front and back else ""
+
+    if front and back:
+        row["rotation"] = f"{front}-{back}"
+        holes = 18
+    elif front or back:
+        row["rotation"] = front or back
+        holes = 9
+    else:
+        row["rotation"] = ""
+        holes = 0
 
     # total time formatting
     row["total_time"] = format_total_time(row.get("total_time") or "")
+
+    # average per hole
+    total_time = row["total_time"]
+    row["average_hole"] = ""
+
+    try:
+        if total_time and holes > 0 and ":" in total_time:
+            hours_part, minutes_part = total_time.split(":")
+            total_minutes = int(hours_part) * 60 + int(minutes_part)
+
+            avg_minutes_float = total_minutes / holes
+            avg_total_seconds = round(avg_minutes_float * 60)
+
+            avg_minutes = avg_total_seconds // 60
+            avg_seconds = avg_total_seconds % 60
+
+            row["average_hole"] = f"{avg_minutes}:{avg_seconds:02d}"
+    except Exception:
+        row["average_hole"] = ""
 
     return row
 
