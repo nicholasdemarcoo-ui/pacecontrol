@@ -247,6 +247,10 @@
             display: none;
         }
 
+        .print-body-head {
+            display: none;
+        }
+
         .print-cover h1 {
             font-size: 36px;
             margin-bottom: 10px;
@@ -310,8 +314,11 @@
             }
 
             .header-table-wrap {
-                display: block !important;
-                overflow: visible !important;
+                display: none !important;
+            }
+
+            .print-body-head {
+                display: table-header-group !important;
             }
 
             .table-shell {
@@ -350,7 +357,7 @@
             table {
                 width: 100% !important;
                 min-width: 0 !important;
-                table-layout: auto !important;
+                table-layout: fixed !important;
             }
 
             @page {
@@ -466,6 +473,23 @@
 
             <div class="body-table-wrap" id="bodyScroll">
                 <table class="body-table">
+                    <thead class="print-body-head">
+                        <tr>
+                            <th class="col-actions">Actions</th>
+                            <th class="col-time">Reservation Time</th>
+                            <th class="col-group">Group Name</th>
+                            <th class="col-players">Players</th>
+                            <th class="col-count"># of Players</th>
+                            <th class="col-walkers">Walkers</th>
+                            <th class="col-riders">Riders</th>
+                            <th class="col-type">Group Type</th>
+                            <th class="col-front">Front</th>
+                            <th class="col-back">Back</th>
+                            <th class="col-rotation">Rotation</th>
+                            <th class="col-total">Total Time</th>
+                            <th class="col-average">Average/<wbr>Hole</th>
+                        </tr>
+                    </thead>
                     <tbody>
                         {% for row in rows %}
                         {% if edit_id == loop.index0 %}
