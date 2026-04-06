@@ -415,13 +415,13 @@
                 <div class="right-panel">
                     <div class="summary-box">
                         <div class="summary-col">
+                            <div><strong>Groups:</strong> {{ summary.groups }}</div>
                             <div><strong>Fastest Round:</strong> {{ summary.fastest }}{% if summary.fastest_name %} ({{ summary.fastest_name }}){% endif %}</div>
                             <div><strong>Slowest Round:</strong> {{ summary.slowest }}{% if summary.slowest_name %} ({{ summary.slowest_name }}){% endif %}</div>
                             <div><strong>Average Pace:</strong> {{ summary.average }}</div>
                         </div>
 
                         <div class="summary-col">
-                            <div><strong>Groups:</strong> {{ summary.groups }}</div>
                             <div><strong>Cart Average:</strong> {{ summary.cart_avg }}</div>
                             <div><strong>Walk Average:</strong> {{ summary.walker_avg }}</div>
                             <div><strong>Mixed Average:</strong> {{ summary.mixed_avg }}</div>
