@@ -257,57 +257,73 @@
             margin-bottom: 6px;
         }
 
-        @media print {
-            body {
-                background: white;
-            }
+@media print {
+    body {
+        background: white;
+    }
 
-            .sticky-header {
-                position: static;
-            }
+    .sticky-header {
+        position: static;
+    }
 
-            .top-row {
-                display: none !important;
-            }
+    .top-row {
+        display: none !important;
+    }
 
-            .print-cover {
-                display: block;
-                page-break-after: always;
-            }
+    .print-cover {
+        display: block;
+        page-break-after: always;
+    }
 
-            .body-table-wrap {
-                max-height: none !important;
-                overflow: visible !important;
-            }
+    .body-table-wrap {
+        max-height: none !important;
+        overflow: visible !important;
+    }
 
-            .header-table-wrap {
-                display: none !important;
-            }
+    .header-table-wrap {
+        display: block !important;
+        overflow: visible !important;
+    }
 
-            .table-shell {
-                box-shadow: none;
-                padding: 0;
-                margin-top: 0;
-            }
+    .table-shell {
+        box-shadow: none;
+        padding: 0;
+        margin-top: 0;
+    }
 
-            .btn,
-            .top-bar form,
-            .top-bar button {
-                display: none !important;
-            }
+    .btn,
+    .top-bar form,
+    .top-bar button {
+        display: none !important;
+    }
 
-            th {
-                background: #0b57d0 !important;
-                color: white !important;
-                -webkit-print-color-adjust: exact;
-                print-color-adjust: exact;
-            }
+    /* Hide columns you do NOT want to print */
+    .col-actions,
+    .col-time,
+    .col-type,
+    .col-front,
+    .col-back,
+    .col-average {
+        display: none !important;
+    }
 
-            td, th {
-                font-size: 12px;
-                padding: 6px;
-            }
-        }
+    th {
+        background: #0b57d0 !important;
+        color: white !important;
+        -webkit-print-color-adjust: exact;
+        print-color-adjust: exact;
+    }
+
+    td, th {
+        font-size: 12px;
+        padding: 6px;
+    }
+
+    table {
+        width: 100% !important;
+        min-width: 0 !important;
+    }
+}
     </style>
 </head>
 <body>
