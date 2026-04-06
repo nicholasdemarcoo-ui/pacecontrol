@@ -336,8 +336,7 @@
             .top-bar button {
                 display: none !important;
             }
-
-            .col-actions,
+            
             .col-time,
             .col-type,
             .col-front,
@@ -359,10 +358,14 @@
                 padding: 4px;
             }
 
-             table {
-                transform: scale(0.9);
-                transform-origin: top center;
-            }
+             @media print {
+
+            table {
+                margin-left: auto;
+                 margin-right: auto;
+                }
+
+            }       
 
             @page {
                 size: portrait;
