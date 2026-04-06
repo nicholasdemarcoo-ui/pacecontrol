@@ -212,25 +212,6 @@ def calculate_summary(rows):
         minutes = total_minutes % 60
         return f"{hours}:{minutes:02d}"
 
-    def avg_hole_to_seconds(value):
-        value = (value or "").strip()
-        if not value or ":" not in value:
-            return None
-
-        try:
-            minutes, seconds = value.split(":")
-            return int(minutes) * 60 + int(seconds)
-        except Exception:
-            return None
-
-    def seconds_to_avg_hole(total_seconds):
-        if total_seconds is None:
-            return "-"
-
-        minutes = total_seconds // 60
-        seconds = total_seconds % 60
-        return f"{minutes}:{seconds:02d}"
-
     valid_rounds = []
     cart_rounds = []
     walk_rounds = []
@@ -255,8 +236,9 @@ def calculate_summary(rows):
         total_time_str = row.get("total_time", "")
         total_minutes = round_time_to_minutes(total_time_str)
 
-        if total_minutes is not None:
-            valid_rounds.append((total_minutes, row.get("group_name", "")))
+        front = (row.get("front") or "").strip()
+        back = (row.get("back") or "").strip()
+        is_18_holes = bool(front and back)
 
         try:
             num_players = int(row.get("num_players") or 0)
@@ -273,21 +255,22 @@ def calculate_summary(rows):
         except Exception:
             riders = None
 
-        if walkers is not None and riders is not None and num_players > 0 and total_minutes is not None:
-            if riders == num_players and walkers == 0:
-                cart_rounds.append(total_minutes)
-            elif walkers == num_players and riders == 0:
-                walk_rounds.append(total_minutes)
-            elif walkers > 0 and riders > 0:
-                mixed_rounds.append(total_minutes)
+        # Summary box pace stats: ONLY 18-hole rounds
+        if is_18_holes and total_minutes is not None:
+            valid_rounds.append((total_minutes, row.get("group_name", "")))
 
-        # rotation pace from rotation + average_hole
+            if walkers is not None and riders is not None and num_players > 0:
+                if riders == num_players and walkers == 0:
+                    cart_rounds.append(total_minutes)
+                elif walkers == num_players and riders == 0:
+                    walk_rounds.append(total_minutes)
+                elif walkers > 0 and riders > 0:
+                    mixed_rounds.append(total_minutes)
+
+        # Print rotation averages also use only 18-hole rotation rows
         rotation = (row.get("rotation") or "").strip()
-        avg_hole = row.get("average_hole", "")
-        avg_seconds = avg_hole_to_seconds(avg_hole)
-
-        if rotation in rotation_buckets and avg_seconds is not None:
-            rotation_buckets[rotation].append(avg_seconds)
+        if is_18_holes and rotation in rotation_buckets and total_minutes is not None:
+            rotation_buckets[rotation].append(total_minutes)
 
     fastest = "-"
     slowest = "-"
@@ -310,7 +293,7 @@ def calculate_summary(rows):
     rotation_pace = {}
     for rotation_name, values in rotation_buckets.items():
         if values:
-            rotation_pace[rotation_name] = seconds_to_avg_hole(round(sum(values) / len(values)))
+            rotation_pace[rotation_name] = minutes_to_round_time(round(sum(values) / len(values)))
         else:
             rotation_pace[rotation_name] = "-"
 
