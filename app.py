@@ -115,13 +115,32 @@ def extract_pdf_text(path):
 
 # ---------------- ROUTES ----------------
 
-@app.route("/")
-def home():
-    data = load_data()
-    return render_template(
-        "index.html",
-        has_sheet=len(data["rows"]) > 0
-    )
+@app.route("/upload", methods=["POST"])
+def upload():
+    if "tee_sheet_pdf" not in request.files:
+        return redirect("/")
+
+    file = request.files["tee_sheet_pdf"]
+
+    if file.filename == "":
+        return redirect("/")
+
+    temp_path = "temp.pdf"
+    file.save(temp_path)
+
+    rows = extract_pdf_text(temp_path)
+
+    data = {
+        "rows": rows,
+        "date": datetime.now().strftime("%B %d, %Y")
+    }
+
+    save_data(data)
+    log_upload(file.filename)
+
+    os.remove(temp_path)
+
+    return redirect("/tee-sheet")
 
 
 @app.route("/upload", methods=["POST"])
