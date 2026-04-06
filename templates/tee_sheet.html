@@ -116,7 +116,7 @@
 
         table {
             width: 100%;
-            min-width: 1400px;
+            min-width: 1550px;
             border-collapse: collapse;
             table-layout: fixed;
             background: white;
@@ -201,16 +201,18 @@
         }
 
         .col-actions { width: 170px; }
-        .col-time { width: 180px; }
+        .col-time { width: 160px; }
         .col-group { width: 180px; }
-        .col-players { width: 360px; }
-        .col-count { width: 130px; }
-        .col-walkers { width: 110px; }
-        .col-riders { width: 110px; }
-        .col-type { width: 140px; }
-        .col-rotation { width: 140px; }
-        .col-total { width: 120px; }
-        .col-average { width: 120px; }
+        .col-players { width: 320px; }
+        .col-count { width: 120px; }
+        .col-walkers { width: 100px; }
+        .col-riders { width: 100px; }
+        .col-type { width: 130px; }
+        .col-front { width: 110px; }
+        .col-back { width: 110px; }
+        .col-rotation { width: 130px; }
+        .col-total { width: 110px; }
+        .col-average { width: 110px; }
 
         .print-cover {
             display: none;
@@ -400,6 +402,8 @@
                             <th class="col-walkers">Walkers</th>
                             <th class="col-riders">Riders</th>
                             <th class="col-type">Group Type</th>
+                            <th class="col-front">Front</th>
+                            <th class="col-back">Back</th>
                             <th class="col-rotation">Rotation</th>
                             <th class="col-total">Total Time</th>
                             <th class="col-average">Average/Hole</th>
@@ -439,20 +443,23 @@
                             </td>
                             <td class="col-riders">Auto</td>
                             <td class="col-type">{{ row.group_type }}</td>
-                            <td class="col-rotation">
-                                    <select name="rotation">
-                                        <option value="" {% if row.rotation == "" %}selected{% endif %}></option>
-                                        <option value="South-West" {% if row.rotation == "South-West" %}selected{% endif %}>South-West</option>
-                                        <option value="South-East" {% if row.rotation == "South-East" %}selected{% endif %}>South-East</option>
-                                        <option value="East-South" {% if row.rotation == "East-South" %}selected{% endif %}>East-South</option>
-                                        <option value="East-West" {% if row.rotation == "East-West" %}selected{% endif %}>East-West</option>
-                                        <option value="West-South" {% if row.rotation == "West-South" %}selected{% endif %}>West-South</option>
-                                        <option value="West-East" {% if row.rotation == "West-East" %}selected{% endif %}>West-East</option>
-                                        <option value="South" {% if row.rotation == "South" %}selected{% endif %}>South</option>
-                                        <option value="West" {% if row.rotation == "West" %}selected{% endif %}>West</option>
-                                        <option value="East" {% if row.rotation == "East" %}selected{% endif %}>East</option>
+                            <td class="col-front">
+                                    <select name="front">
+                                        <option value="" {% if row.front == "" %}selected{% endif %}></option>
+                                        <option value="South" {% if row.front == "South" %}selected{% endif %}>South</option>
+                                        <option value="East" {% if row.front == "East" %}selected{% endif %}>East</option>
+                                        <option value="West" {% if row.front == "West" %}selected{% endif %}>West</option>
                                     </select>
                             </td>
+                            <td class="col-back">
+                                    <select name="back">
+                                        <option value="" {% if row.back == "" %}selected{% endif %}></option>
+                                        <option value="South" {% if row.back == "South" %}selected{% endif %}>South</option>
+                                        <option value="East" {% if row.back == "East" %}selected{% endif %}>East</option>
+                                        <option value="West" {% if row.back == "West" %}selected{% endif %}>West</option>
+                                    </select>
+                            </td>
+                            <td class="col-rotation">{{ row.rotation }}</td>
                             <td class="col-total">
                                     <input type="text" name="total_time" value="{{ row.total_time }}" placeholder="4:05">
                             </td>
@@ -476,6 +483,8 @@
                             <td class="col-walkers">{{ row.walkers }}</td>
                             <td class="col-riders">{{ row.riders }}</td>
                             <td class="col-type">{{ row.group_type }}</td>
+                            <td class="col-front">{{ row.front }}</td>
+                            <td class="col-back">{{ row.back }}</td>
                             <td class="col-rotation">{{ row.rotation }}</td>
                             <td class="col-total">{{ row.total_time }}</td>
                             <td class="col-average">{{ row.average_hole }}</td>
