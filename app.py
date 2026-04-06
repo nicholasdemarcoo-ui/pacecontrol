@@ -193,16 +193,97 @@ def apply_derived_fields(row):
 
 
 def calculate_summary(rows):
+    def time_to_minutes(value):
+        value = (value or "").strip()
+        if not value or ":" not in value:
+            return None
+
+        try:
+            hours, minutes = value.split(":")
+            return int(hours) * 60 + int(minutes)
+        except Exception:
+            return None
+
+    def minutes_to_time(total_minutes):
+        if total_minutes is None:
+            return "-"
+
+        hours = total_minutes // 60
+        minutes = total_minutes % 60
+        return f"{hours}:{minutes:02d}"
+
+    valid_rounds = []
+    cart_rounds = []
+    walk_rounds = []
+    mixed_rounds = []
+
+    fastest_name = ""
+    slowest_name = ""
+
+    for row in rows:
+        total_time_str = row.get("total_time", "")
+        total_minutes = time_to_minutes(total_time_str)
+
+        if total_minutes is None:
+            continue
+
+        valid_rounds.append((total_minutes, row.get("group_name", "")))
+
+        try:
+            num_players = int(row.get("num_players") or 0)
+        except Exception:
+            num_players = 0
+
+        try:
+            walkers = int(row.get("walkers")) if str(row.get("walkers", "")).strip() != "" else None
+        except Exception:
+            walkers = None
+
+        try:
+            riders = int(row.get("riders")) if str(row.get("riders", "")).strip() != "" else None
+        except Exception:
+            riders = None
+
+        if walkers is None or riders is None or num_players == 0:
+            continue
+
+        if riders == num_players and walkers == 0:
+            cart_rounds.append(total_minutes)
+        elif walkers == num_players and riders == 0:
+            walk_rounds.append(total_minutes)
+        elif walkers > 0 and riders > 0:
+            mixed_rounds.append(total_minutes)
+
+    fastest = "-"
+    slowest = "-"
+    average = "-"
+
+    if valid_rounds:
+        fastest_minutes, fastest_name = min(valid_rounds, key=lambda x: x[0])
+        slowest_minutes, slowest_name = max(valid_rounds, key=lambda x: x[0])
+
+        avg_minutes = round(sum(t for t, _ in valid_rounds) / len(valid_rounds))
+
+        fastest = minutes_to_time(fastest_minutes)
+        slowest = minutes_to_time(slowest_minutes)
+        average = minutes_to_time(avg_minutes)
+
+    cart_avg = minutes_to_time(round(sum(cart_rounds) / len(cart_rounds))) if cart_rounds else "-"
+    walk_avg = minutes_to_time(round(sum(walk_rounds) / len(walk_rounds))) if walk_rounds else "-"
+    mixed_avg = minutes_to_time(round(sum(mixed_rounds) / len(mixed_rounds))) if mixed_rounds else "-"
+
     return {
         "groups": len(rows),
-        "total_walkers": sum(int(r.get("walkers") or 0) for r in rows),
-        "total_riders": sum(int(r.get("riders") or 0) for r in rows),
-        "fastest": "-",
-        "slowest": "-",
-        "average": "-",
-        "cart_avg": "-",
-        "walker_avg": "-",
-        "mixed_avg": "-",
+        "total_walkers": sum(int(r.get("walkers") or 0) for r in rows if str(r.get("walkers", "")).strip() != ""),
+        "total_riders": sum(int(r.get("riders") or 0) for r in rows if str(r.get("riders", "")).strip() != ""),
+        "fastest": fastest,
+        "fastest_name": fastest_name,
+        "slowest": slowest,
+        "slowest_name": slowest_name,
+        "average": average,
+        "cart_avg": cart_avg,
+        "walker_avg": walk_avg,
+        "mixed_avg": mixed_avg,
         "rotation_pace": {
             "South-East": "-",
             "South-West": "-",
