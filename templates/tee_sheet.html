@@ -27,10 +27,8 @@
         }
 
         .top-row {
-            display: flex;
-            justify-content: space-between;
-            align-items: flex-start;
-            gap: 30px;
+            position: relative;
+            min-height: 180px;
         }
 
         .left-side {
@@ -45,7 +43,6 @@
             flex-direction: column;
             align-items: center;
             justify-content: center;
-            margin-bottom: 16px;
         }
 
         h1 {
@@ -56,21 +53,28 @@
         }
 
         .sheet-date {
-            font-size: 34px;
+            font-size: 20px;
             font-weight: 500;
             color: #777;
             text-align: center;
             margin-top: 6px;
         }
 
-        .top-row {
+        .top-bar {
+            position: absolute;
+            top: 125px;
+            right: 0;
             display: flex;
-            flex-direction: column;
+            gap: 12px;
             align-items: center;
-            gap: 20px;
+            flex-wrap: wrap;
+            justify-content: flex-end;
         }
 
         .summary-box {
+            position: absolute;
+            top: 0;
+            right: 0;
             display: flex;
             gap: 40px;
             background: white;
@@ -211,12 +215,24 @@
         .col-count { width: 90px; }
         .col-walkers { width: 90px; }
         .col-riders { width: 90px; }
-        .col-type { width: 130px; }
+        .col-type { width: 130px; display: none; }
         .col-front { width: 90px; }
         .col-back { width: 90px; }
         .col-rotation { width: 90px; }
         .col-total { width: 90px; }
         .col-average { width: 95px; }
+
+        .col-count,
+        .col-walkers,
+        .col-riders,
+        .col-front,
+        .col-back,
+        .col-rotation,
+        .col-total,
+        .col-average {
+            text-align: center;
+            vertical-align: middle;
+        }
 
         .print-cover {
             display: none;
@@ -260,97 +276,79 @@
         .rotation-list .print-line {
             margin-bottom: 6px;
         }
-        /* Center specific columns */
-.col-count,
-.col-actions,
-.col-walkers,
-.col-riders,
-.col-front,
-.col-back,
-.col-rotation,
-.col-total,
-.col-time,
-.col-average {
-    text-align: center;
-    vertical-align: middle;
-}
 
-/* Hide Group Type column */
-.col-type {
-    display: none;
-}
+        @media print {
+            body {
+                background: white;
+            }
 
-@media print {
-    @page {
-    size: portrait;
-    margin: 0.4in;
-    }
-    body {
-        background: white;
-    }
+            .sticky-header {
+                position: static;
+            }
 
-    .sticky-header {
-        position: static;
-    }
+            .top-row {
+                display: none !important;
+            }
 
-    .top-row {
-        display: none !important;
-    }
+            .print-cover {
+                display: block;
+                page-break-after: always;
+            }
 
-    .print-cover {
-        display: block;
-        page-break-after: always;
-    }
+            .body-table-wrap {
+                max-height: none !important;
+                overflow: visible !important;
+            }
 
-    .body-table-wrap {
-        max-height: none !important;
-        overflow: visible !important;
-    }
+            .header-table-wrap {
+                display: block !important;
+                overflow: visible !important;
+            }
 
-    .header-table-wrap {
-        display: block !important;
-        overflow: visible !important;
-    }
+            .table-shell {
+                box-shadow: none;
+                padding: 0;
+                margin-top: 0;
+            }
 
-    .table-shell {
-        box-shadow: none;
-        padding: 0;
-        margin-top: 0;
-    }
+            .btn,
+            .top-bar form,
+            .top-bar button {
+                display: none !important;
+            }
 
-    .btn,
-    .top-bar form,
-    .top-bar button {
-        display: none !important;
-    }
+            .col-actions,
+            .col-time,
+            .col-type,
+            .col-front,
+            .col-back,
+            .col-average {
+                display: none !important;
+            }
 
-    /* Hide columns you do NOT want to print */
-    .col-actions,
-    .col-time,
-    .col-type,
-    .col-front,
-    .col-back,
-    .col-average {
-        display: none !important;
-    }
+            th {
+                background: #0b57d0 !important;
+                color: white !important;
+                -webkit-print-color-adjust: exact;
+                print-color-adjust: exact;
+            }
 
-    th {
-        background: #0b57d0 !important;
-        color: white !important;
-        -webkit-print-color-adjust: exact;
-        print-color-adjust: exact;
-    }
+            td, th {
+                font-size: 10px;
+                padding: 4px;
+            }
 
-    td, th {
-        font-size: 10px;
-        padding: 4px;
-    }
+            table {
+                width: 100% !important;
+                min-width: 0 !important;
+                table-layout: auto !important;
+            }
 
-    table {
-        width: 100% !important;
-        min-width: 0 !important;
-    }
-}
+            @page {
+                size: landscape;
+                margin: 0.3in;
+            }
+        }
     </style>
 </head>
 <body>
@@ -404,29 +402,29 @@
                             <div class="sheet-date">{{ tee_sheet_date }}</div>
                         {% endif %}
                     </div>
-
-                    <div class="top-bar">
-                        <form class="add-form" action="/add-reservation" method="POST">
-                            <button class="btn btn-add" type="submit">Add Reservation</button>
-                        </form>
-
-                        <button class="btn btn-print" type="button" onclick="window.print()">Print</button>
-                    </div>
                 </div>
 
                 <div class="summary-box">
                     <div class="summary-col">
-                        <div><strong>Groups:</strong> {{ summary.groups }}</div>
                         <div><strong>Fastest Round:</strong> {{ summary.fastest }}{% if summary.fastest_name %} ({{ summary.fastest_name }}){% endif %}</div>
                         <div><strong>Slowest Round:</strong> {{ summary.slowest }}{% if summary.slowest_name %} ({{ summary.slowest_name }}){% endif %}</div>
                         <div><strong>Average Pace:</strong> {{ summary.average }}</div>
                     </div>
 
                     <div class="summary-col">
+                        <div><strong>Groups:</strong> {{ summary.groups }}</div>
                         <div><strong>Cart Average:</strong> {{ summary.cart_avg }}</div>
                         <div><strong>Walk Average:</strong> {{ summary.walker_avg }}</div>
                         <div><strong>Mixed Average:</strong> {{ summary.mixed_avg }}</div>
                     </div>
+                </div>
+
+                <div class="top-bar">
+                    <form class="add-form" action="/add-reservation" method="POST">
+                        <button class="btn btn-add" type="submit">Add Reservation</button>
+                    </form>
+
+                    <button class="btn btn-print" type="button" onclick="window.print()">Print</button>
                 </div>
             </div>
         </div>
