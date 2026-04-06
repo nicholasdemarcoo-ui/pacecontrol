@@ -60,8 +60,7 @@ def holes_for_rotation(rotation: str):
     if not rotation:
         return 18
 
-    nine_hole_rotations = {"South", "West", "East"}
-    if rotation in nine_hole_rotations:
+    if rotation in {"South", "West", "East"}:
         return 9
 
     return 18
@@ -73,7 +72,6 @@ def time_to_minutes(time_str):
 
     value = time_str.strip()
 
-    # Allows 405 -> 4:05, 355 -> 3:55, 1205 -> 12:05
     if value.isdigit():
         if len(value) == 3:
             hours = int(value[0])
@@ -167,15 +165,54 @@ def sort_rows():
     tee_sheet_rows.sort(key=lambda row: time_sort_key(row.get("reservation_time", "")))
 
 
+def extract_sheet_date(full_text: str):
+    match = re.search(r"Sheet Date:\s*(\d{2}/\d{2}/\d{4})", full_text)
+    if not match:
+        return ""
+
+    raw_date = match.group(1)
+
+    try:
+        dt = datetime.strptime(raw_date, "%m/%d/%Y")
+        return dt.strftime("%m/%d/%Y")
+    except ValueError:
+        return raw_date
+
+
 def build_summary(rows):
     total_groups = len(rows)
+    total_walkers = 0
+    total_riders = 0
 
     completed = []
     cart_times = []
     walker_times = []
     mixed_times = []
 
+    rotation_buckets = {
+        "South-East": [],
+        "South-West": [],
+        "East-West": [],
+        "East-South": [],
+        "West-East": [],
+        "West-South": [],
+        "South": [],
+        "West": [],
+        "East": [],
+    }
+
     for row in rows:
+        walkers_raw = row.get("walkers", "")
+        riders_raw = row.get("riders", "")
+
+        try:
+            if walkers_raw != "":
+                total_walkers += int(walkers_raw)
+            if riders_raw != "":
+                total_riders += int(riders_raw)
+        except Exception:
+            pass
+
         total_time = row.get("total_time", "")
         mins = time_to_minutes(total_time)
 
@@ -187,6 +224,7 @@ def build_summary(rows):
         walkers = row.get("walkers")
         riders = row.get("riders")
         num_players = row.get("num_players")
+        rotation = row.get("rotation", "")
 
         try:
             walkers = int(walkers)
@@ -202,6 +240,9 @@ def build_summary(rows):
         elif walkers > 0 and riders > 0:
             mixed_times.append(mins)
 
+        if rotation in rotation_buckets:
+            rotation_buckets[rotation].append(mins)
+
     fastest = min(completed, default=None, key=lambda x: x[0])
     slowest = max(completed, default=None, key=lambda x: x[0])
 
@@ -213,8 +254,15 @@ def build_summary(rows):
     walker_avg = sum(walker_times) // len(walker_times) if walker_times else None
     mixed_avg = sum(mixed_times) // len(mixed_times) if mixed_times else None
 
+    rotation_pace = {
+        key: minutes_to_time(sum(vals) // len(vals)) if vals else ""
+        for key, vals in rotation_buckets.items()
+    }
+
     return {
         "groups": total_groups,
+        "total_walkers": total_walkers,
+        "total_riders": total_riders,
         "fastest": minutes_to_time(fastest[0]) if fastest else "",
         "fastest_name": fastest[1]["group_name"] if fastest else "",
         "slowest": minutes_to_time(slowest[0]) if slowest else "",
@@ -223,21 +271,8 @@ def build_summary(rows):
         "cart_avg": minutes_to_time(cart_avg),
         "walker_avg": minutes_to_time(walker_avg),
         "mixed_avg": minutes_to_time(mixed_avg),
+        "rotation_pace": rotation_pace,
     }
-
-
-def extract_sheet_date(full_text: str):
-    match = re.search(r"Sheet Date:\s*(\d{2}/\d{2}/\d{4})", full_text)
-    if not match:
-        return ""
-
-    raw_date = match.group(1)
-
-    try:
-        dt = datetime.strptime(raw_date, "%m/%d/%Y")
-        return dt.strftime("%m/%d/%Y")
-    except ValueError:
-        return raw_date
 
 
 def parse_tee_sheet_pdf(pdf_path: str):
