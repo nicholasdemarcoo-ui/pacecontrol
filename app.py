@@ -1,15 +1,17 @@
 import pyodbc
 
 conn = pyodbc.connect(
-    "DRIVER={ODBC Driver 17 for SQL Server};"
-    "SERVER=YOUR_SERVER.database.windows.net;"
+    "DRIVER={ODBC Driver 18 for SQL Server};"
+    "SERVER=pace-control.database.windows.net;"
     "DATABASE=tee_sheet_db;"
-    "UID=YOUR_USERNAME;"
-    "PWD=YOUR_PASSWORD"
+    "UID=adminuser;"
+    "PWD=YOUR_PASSWORD;"
+    "Encrypt=yes;"
+    "TrustServerCertificate=no;"
+    "Connection Timeout=30;"
 )
 
 cursor = conn.cursor()
-
 import os
 import re
 import fitz
