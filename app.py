@@ -1,10 +1,11 @@
 import json
 import os
+import re
 from datetime import datetime
 
 import fitz
 from dotenv import load_dotenv
-from flask import Flask, redirect, render_template, request, url_for
+from flask import Flask, redirect, render_template, request
 from mssql_python import connect
 
 load_dotenv()
@@ -47,12 +48,12 @@ def load_data():
     if not os.path.exists(STATE_FILE):
         return {"rows": [], "date": ""}
 
-    with open(STATE_FILE, "r") as f:
+    with open(STATE_FILE, "r", encoding="utf-8") as f:
         return json.load(f)
 
 
 def save_data(data):
-    with open(STATE_FILE, "w") as f:
+    with open(STATE_FILE, "w", encoding="utf-8") as f:
         json.dump(data, f)
 
 
@@ -90,30 +91,103 @@ def calculate_summary(rows):
 def extract_pdf_text(path):
     rows = []
 
+    time_only_pattern = re.compile(r"^\d{2}:\d{2}\s[AP]M$")
+    inline_time_pattern = re.compile(r"^(\d{2}:\d{2}\s[AP]M)\b")
+    last_name_pattern = re.compile(r"^([A-Za-z'`\- ]+),\s")
+    inline_last_name_pattern = re.compile(r"([A-Za-z'`\- ]+),\s+[A-Za-z]")
+
     with fitz.open(path) as doc:
+        lines = []
         for page in doc:
-            text = page.get_text()
-            for line in text.split("\n"):
-                if ":" in line:
-                    rows.append({
-                        "reservation_time": line[:5],
-                        "group_name": "",
-                        "players": "",
-                        "num_players": "",
-                        "walkers": "",
-                        "riders": "",
-                        "group_type": "",
-                        "front": "",
-                        "back": "",
-                        "rotation": "",
-                        "total_time": "",
-                        "average_hole": ""
-                    })
+            for raw_line in page.get_text("text").splitlines():
+                line = raw_line.strip()
+                if line:
+                    lines.append(line)
+
+    i = 0
+    while i < len(lines):
+        line = lines[i]
+
+        # Case 1: normal tee time line by itself, e.g. "08:00 AM"
+        if time_only_pattern.match(line):
+            reservation_time = line
+            i += 1
+
+            # Empty slot
+            if i < len(lines) and lines[i] == "E":
+                i += 1
+                continue
+
+            player_last_names = []
+
+            while i < len(lines):
+                current = lines[i]
+
+                if time_only_pattern.match(current):
+                    break
+
+                if inline_time_pattern.match(current):
+                    break
+
+                name_match = last_name_pattern.match(current)
+                if name_match:
+                    player_last_names.append(name_match.group(1).strip())
+
+                i += 1
+
+            if player_last_names:
+                rows.append({
+                    "reservation_time": reservation_time,
+                    "group_name": f"{player_last_names[0]} Group",
+                    "players": ", ".join(player_last_names),
+                    "num_players": str(len(player_last_names)),
+                    "walkers": "",
+                    "riders": "",
+                    "group_type": "",
+                    "front": "",
+                    "back": "",
+                    "rotation": "",
+                    "total_time": "",
+                    "average_hole": ""
+                })
+            continue
+
+        # Case 2: compressed one-line row, e.g. "04:05 PM R CHILD-G Danckwerth, Jessica ..."
+        inline_time_match = inline_time_pattern.match(line)
+        if inline_time_match:
+            reservation_time = inline_time_match.group(1)
+
+            if re.search(r"\bE\b", line):
+                i += 1
+                continue
+
+            inline_last_names = []
+            for match in inline_last_name_pattern.finditer(line):
+                inline_last_names.append(match.group(1).strip())
+
+            if inline_last_names:
+                rows.append({
+                    "reservation_time": reservation_time,
+                    "group_name": f"{inline_last_names[0]} Group",
+                    "players": ", ".join(inline_last_names),
+                    "num_players": str(len(inline_last_names)),
+                    "walkers": "",
+                    "riders": "",
+                    "group_type": "",
+                    "front": "",
+                    "back": "",
+                    "rotation": "",
+                    "total_time": "",
+                    "average_hole": ""
+                })
+
+        i += 1
 
     return rows
 
 
 # ---------------- ROUTES ----------------
+
 @app.route("/")
 def home():
     data = load_data()
@@ -121,6 +195,7 @@ def home():
         "index.html",
         has_sheet=len(data["rows"]) > 0
     )
+
 
 @app.route("/upload", methods=["POST"])
 def upload():
@@ -145,7 +220,8 @@ def upload():
     save_data(data)
     log_upload(file.filename)
 
-    os.remove(temp_path)
+    if os.path.exists(temp_path):
+        os.remove(temp_path)
 
     return redirect("/tee-sheet")
 
@@ -195,12 +271,17 @@ def save(index):
     data = load_data()
     row = data["rows"][index]
 
-    row["reservation_time"] = request.form.get("reservation_time")
-    row["players"] = request.form.get("players")
-    row["walkers"] = request.form.get("walkers")
-    row["front"] = request.form.get("front")
-    row["back"] = request.form.get("back")
-    row["total_time"] = request.form.get("total_time")
+    players_text = (request.form.get("players") or "").strip()
+    player_list = [p.strip() for p in players_text.split(",") if p.strip()]
+
+    row["reservation_time"] = request.form.get("reservation_time", "")
+    row["players"] = players_text
+    row["num_players"] = str(len(player_list))
+    row["group_name"] = f"{player_list[0]} Group" if player_list else ""
+    row["walkers"] = request.form.get("walkers", "")
+    row["front"] = request.form.get("front", "")
+    row["back"] = request.form.get("back", "")
+    row["total_time"] = request.form.get("total_time", "")
 
     save_data(data)
     return redirect("/tee-sheet")
