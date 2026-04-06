@@ -57,6 +57,21 @@ def save_data(data):
         json.dump(data, f)
 
 
+# ---------------- NEW VERSION ROUTE ----------------
+
+@app.route("/api/version")
+def api_version():
+    if not os.path.exists(STATE_FILE):
+        return jsonify({"version": 0})
+
+    try:
+        version = os.path.getmtime(STATE_FILE)
+    except Exception:
+        version = 0
+
+    return jsonify({"version": version})
+
+
 # ---------------- HELPERS ----------------
 
 def sort_rows_by_time(rows):
@@ -91,17 +106,7 @@ def calculate_summary(rows):
         "cart_avg": "-",
         "walker_avg": "-",
         "mixed_avg": "-",
-        "rotation_pace": {
-            "South-East": "-",
-            "South-West": "-",
-            "East-West": "-",
-            "East-South": "-",
-            "West-East": "-",
-            "West-South": "-",
-            "South": "-",
-            "West": "-",
-            "East": "-"
-        }
+        "rotation_pace": {}
     }
 
 
@@ -109,9 +114,7 @@ def extract_pdf_text(path):
     rows = []
 
     time_only_pattern = re.compile(r"^\d{2}:\d{2}\s[AP]M$")
-    inline_time_pattern = re.compile(r"^(\d{2}:\d{2}\s[AP]M)\b")
     last_name_pattern = re.compile(r"^([A-Za-z'`\- ]+),\s")
-    inline_last_name_pattern = re.compile(r"([A-Za-z'`\- ]+),\s+[A-Za-z]")
 
     with fitz.open(path) as doc:
         lines = []
@@ -125,15 +128,9 @@ def extract_pdf_text(path):
     while i < len(lines):
         line = lines[i]
 
-        # Case 1: normal tee time line by itself, e.g. "08:00 AM"
         if time_only_pattern.match(line):
             reservation_time = line
             i += 1
-
-            # Empty slot
-            if i < len(lines) and lines[i] == "E":
-                i += 1
-                continue
 
             player_last_names = []
 
@@ -141,9 +138,6 @@ def extract_pdf_text(path):
                 current = lines[i]
 
                 if time_only_pattern.match(current):
-                    break
-
-                if inline_time_pattern.match(current):
                     break
 
                 name_match = last_name_pattern.match(current)
@@ -160,7 +154,6 @@ def extract_pdf_text(path):
                     "num_players": str(len(player_last_names)),
                     "walkers": "",
                     "riders": "",
-                    "group_type": "",
                     "front": "",
                     "back": "",
                     "rotation": "",
@@ -168,35 +161,6 @@ def extract_pdf_text(path):
                     "average_hole": ""
                 })
             continue
-
-        # Case 2: compressed one-line row, e.g. "04:05 PM R CHILD-G Danckwerth, Jessica ..."
-        inline_time_match = inline_time_pattern.match(line)
-        if inline_time_match:
-            reservation_time = inline_time_match.group(1)
-
-            if re.search(r"\bE\b", line):
-                i += 1
-                continue
-
-            inline_last_names = []
-            for match in inline_last_name_pattern.finditer(line):
-                inline_last_names.append(match.group(1).strip())
-
-            if inline_last_names:
-                rows.append({
-                    "reservation_time": reservation_time,
-                    "group_name": f"{inline_last_names[0]} Group",
-                    "players": ", ".join(inline_last_names),
-                    "num_players": str(len(inline_last_names)),
-                    "walkers": "",
-                    "riders": "",
-                    "group_type": "",
-                    "front": "",
-                    "back": "",
-                    "rotation": "",
-                    "total_time": "",
-                    "average_hole": ""
-                })
 
         i += 1
 
@@ -208,24 +172,10 @@ def extract_pdf_text(path):
 @app.route("/")
 def home():
     data = load_data()
-    has_sheet = len(data["rows"]) > 0
-
     return render_template(
         "index.html",
-        has_sheet=has_sheet,
-        db_status="Connected",
-        upload_status=None,
-        uploaded_filename=None,
-        extracted_text=None
+        has_sheet=len(data["rows"]) > 0
     )
-
-
-@app.route("/api/status")
-def api_status():
-    data = load_data()
-    return jsonify({
-        "has_sheet": len(data["rows"]) > 0
-    })
 
 
 @app.route("/upload", methods=["POST"])
@@ -272,67 +222,6 @@ def tee_sheet():
         edit_id=edit_id,
         player_count_options=player_count_options
     )
-
-
-@app.route("/add-reservation", methods=["POST"])
-def add_reservation():
-    data = load_data()
-
-    data["rows"].insert(0, {
-        "reservation_time": "",
-        "group_name": "",
-        "players": "",
-        "num_players": "",
-        "walkers": "",
-        "riders": "",
-        "group_type": "",
-        "front": "",
-        "back": "",
-        "rotation": "",
-        "total_time": "",
-        "average_hole": ""
-    })
-
-    save_data(data)
-    return redirect("/tee-sheet?edit=0#row-0")
-
-
-@app.route("/save/<int:index>", methods=["POST"])
-def save(index):
-    data = load_data()
-    row = data["rows"][index]
-
-    players_text = (request.form.get("players") or "").strip()
-    player_list = [p.strip() for p in players_text.split(",") if p.strip()]
-
-    row["reservation_time"] = request.form.get("reservation_time", "").strip()
-    row["players"] = players_text
-    row["num_players"] = str(len(player_list))
-    row["group_name"] = f"{player_list[0]} Group" if player_list else ""
-    row["walkers"] = request.form.get("walkers", "")
-    row["front"] = request.form.get("front", "")
-    row["back"] = request.form.get("back", "")
-    row["total_time"] = request.form.get("total_time", "")
-
-    sort_rows_by_time(data["rows"])
-    save_data(data)
-
-    return redirect("/tee-sheet")
-
-
-@app.route("/delete/<int:index>", methods=["POST"])
-def delete(index):
-    data = load_data()
-    data["rows"].pop(index)
-    save_data(data)
-    return redirect("/tee-sheet")
-
-
-@app.route("/clear-tee-sheet", methods=["POST"])
-def clear():
-    if os.path.exists(STATE_FILE):
-        os.remove(STATE_FILE)
-    return redirect("/")
 
 
 # ---------------- RUN ----------------

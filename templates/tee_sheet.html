@@ -613,31 +613,49 @@
     </div>
 
     <script>
-        const headerScroll = document.getElementById("headerScroll");
-        const bodyScroll = document.getElementById("bodyScroll");
+    const headerScroll = document.getElementById("headerScroll");
+    const bodyScroll = document.getElementById("bodyScroll");
 
-        if (headerScroll && bodyScroll) {
-            bodyScroll.addEventListener("scroll", () => {
-                headerScroll.scrollLeft = bodyScroll.scrollLeft;
-            });
+    if (headerScroll && bodyScroll) {
+        bodyScroll.addEventListener("scroll", () => {
+            headerScroll.scrollLeft = bodyScroll.scrollLeft;
+        });
+    }
+
+    if (window.location.hash) {
+        const el = document.querySelector(window.location.hash);
+        if (el) {
+            setTimeout(() => {
+                el.scrollIntoView({ behavior: "smooth", block: "center" });
+            }, 100);
         }
+    }
 
-        if (window.location.hash) {
-            const el = document.querySelector(window.location.hash);
-            if (el) {
-                setTimeout(() => {
-                    el.scrollIntoView({ behavior: "smooth", block: "center" });
-                }, 100);
+    let lastVersion = null;
+    const isEditing = document.body.dataset.editing === "true";
+
+    async function checkForUpdates() {
+        try {
+            const response = await fetch("/api/version");
+            const data = await response.json();
+
+            if (lastVersion === null) {
+                lastVersion = data.version;
+                return;
             }
-        }
 
-        const isEditing = document.body.dataset.editing === "true";
-
-        if (!isEditing) {
-            setInterval(() => {
+            if (data.version !== lastVersion) {
                 window.location.reload();
-            }, 5000);
+            }
+        } catch (error) {
+            console.error("Version check failed:", error);
         }
+    }
+
+    if (!isEditing) {
+        checkForUpdates();
+        setInterval(checkForUpdates, 3000);
+    }
     </script>
 </body>
 </html>
