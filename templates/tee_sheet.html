@@ -14,8 +14,10 @@
 
         .page-shell {
             padding: 20px 30px 30px 30px;
-            max-width: 1800px;
+            width: 100%;
+            max-width: none;
             margin: 0 auto;
+            box-sizing: border-box;
         }
 
         .sticky-header {
@@ -221,16 +223,16 @@
 
         .col-actions { width: 135px; }
         .col-time { width: 100px; }
-        .col-group { width: 180px; }
+        .col-group { width: 220px; }
         .col-players { width: 320px; }
-        .col-count { width: 90px; }
+        .col-count { width: 100px; }
         .col-walkers { width: 90px; }
         .col-riders { width: 90px; }
         .col-type { width: 130px; display: none; }
         .col-front { width: 90px; }
         .col-back { width: 90px; }
-        .col-rotation { width: 90px; }
-        .col-total { width: 90px; }
+        .col-rotation { width: 110px; }
+        .col-total { width: 110px; }
         .col-average { width: 95px; }
 
         .col-count,
@@ -296,7 +298,16 @@
 
         @media print {
             body {
+                margin: 0;
+                padding: 0;
                 background: white;
+            }
+
+            .page-shell {
+                width: 100%;
+                max-width: 100%;
+                padding: 0;
+                margin: 0 auto;
             }
 
             .sticky-header {
@@ -333,16 +344,25 @@
 
             .btn,
             .top-bar form,
-            .top-bar button {
+            .top-bar button,
+            form {
                 display: none !important;
             }
-            
-            .col-time,
-            .col-type,
-            .col-front,
-            .col-back,
-            .col-average {
-                display: none !important;
+
+            table {
+                width: 100% !important;
+                min-width: 0 !important;
+                table-layout: fixed !important;
+                border-collapse: collapse;
+                font-size: 11px;
+                margin: 0 auto;
+            }
+
+            th,
+            td {
+                padding: 6px;
+                text-align: center;
+                vertical-align: middle;
             }
 
             th {
@@ -352,20 +372,26 @@
                 print-color-adjust: exact;
             }
 
-            td,
-            th {
-                font-size: 10px;
-                padding: 4px;
+            /* Hide all unwanted columns on print */
+            .col-actions,
+            .col-time,
+            .col-players,
+            .col-type,
+            .col-front,
+            .col-back,
+            .col-average {
+                display: none !important;
             }
 
-             @media print {
-
-            table {
-                margin-left: auto;
-                 margin-right: auto;
-                }
-
-            }       
+            /* Keep only these */
+            .col-group,
+            .col-count,
+            .col-walkers,
+            .col-riders,
+            .col-rotation,
+            .col-total {
+                display: table-cell !important;
+            }
 
             @page {
                 size: portrait;
