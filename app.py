@@ -119,9 +119,10 @@ def format_reservation_time(value):
     digits = "".join(ch for ch in value if ch.isdigit())
 
     if len(digits) == 3:
-        return f"{digits[0]}:{digits[1:]}"
+        return f"{int(digits[0])}:{digits[1:]}"
     if len(digits) == 4:
-        return f"{digits[:2]}:{digits[2:]}"
+        hours = str(int(digits[:2]))
+        return f"{hours}:{digits[2:]}"
     return value
 
 
