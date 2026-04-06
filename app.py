@@ -3,12 +3,19 @@ from os import getenv
 from dotenv import load_dotenv
 from mssql_python import connect
 
-app = Flask(__name__)   # ✅ correct
+app = Flask(__name__)
 
 load_dotenv()
 
 def get_connection():
-    return connect(getenv("SQL_CONNECTION_STRING"))
+    return connect(
+        server=getenv("SQL_SERVER"),
+        database=getenv("SQL_DATABASE"),
+        user=getenv("SQL_USER"),
+        password=getenv("SQL_PASSWORD"),
+        port=1433,
+        encrypt=True
+    )
 
 @app.route("/test-db")
 def test_db():
