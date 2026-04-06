@@ -1,3 +1,15 @@
+import pyodbc
+
+conn = pyodbc.connect(
+    "DRIVER={ODBC Driver 17 for SQL Server};"
+    "SERVER=YOUR_SERVER.database.windows.net;"
+    "DATABASE=tee_sheet_db;"
+    "UID=YOUR_USERNAME;"
+    "PWD=YOUR_PASSWORD"
+)
+
+cursor = conn.cursor()
+
 import os
 import re
 import fitz
@@ -602,6 +614,14 @@ def delete_row(row_id):
             db.commit()
 
     return redirect(url_for("tee_sheet"))
+
+@app.route("/test-db")
+def test_db():
+    try:
+        cursor.execute("SELECT 1")
+        return "Database connected!"
+    except Exception as e:
+        return f"Error: {e}"
 
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 10000))
