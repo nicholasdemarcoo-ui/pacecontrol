@@ -567,31 +567,16 @@ def save(index):
     return redirect("/tee-sheet")
 
 
-@app.route("/delete/<int:index>", methods=["POST"])
-def delete(index):
-    data = load_data()
-
-    if index < 0 or index >= len(data["rows"]):
-        return redirect("/tee-sheet")
-
-    row_id = data["rows"][index]["id"]
-    sheet_id = data["sheet_id"]
-
-    with get_connection() as conn:
-        cursor = conn.cursor()
-
-        cursor.execute("DELETE FROM dbo.tee_sheet_rows WHERE id = ?", (row_id,))
-        cursor.execute("""
-            UPDATE dbo.tee_sheets
-            SET updated_at = GETDATE()
-            WHERE id = ?
-        """, (sheet_id,))
-
-        conn.commit()
-
-    sort_rows_by_time_db(sheet_id)
-
-    return redirect("/tee-sheet")
+@app.route("/")
+def home():
+    try:
+        data = load_data()
+        return render_template(
+            "index.html",
+            has_sheet=len(data["rows"]) > 0
+        )
+    except Exception as e:
+        return f"Home error: {e}"
 
 
 @app.route("/clear-tee-sheet", methods=["POST"])
