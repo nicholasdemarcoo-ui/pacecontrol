@@ -71,17 +71,13 @@
 </head>
 <body>
     <div class="container">
-        <h1>Pace Control</h1>
+        <h1>Course Pace Report</h1>
         <p>Upload a Tee Sheet PDF to generate the Daily Pace Report.</p>
 
         <form action="/upload" method="POST" enctype="multipart/form-data">
             <input type="file" name="tee_sheet_pdf" accept=".pdf" required>
             <button type="submit">Upload Tee Sheet</button>
         </form>
-
-        <div class="link-box">
-            <a href="/tee-sheet">Go to Tee Sheet</a>
-        </div>
     </div>
 </body>
 </html>
