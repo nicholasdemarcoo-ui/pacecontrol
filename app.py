@@ -1,4 +1,3 @@
-import json
 import os
 import re
 from datetime import datetime
@@ -11,8 +10,6 @@ from mssql_python import connect
 load_dotenv()
 
 app = Flask(__name__)
-
-STATE_FILE = "tee_sheet_data.json"
 
 
 # ---------------- DATABASE ----------------
@@ -35,30 +32,240 @@ def log_upload(filename):
                     uploaded_at DATETIME2 DEFAULT GETDATE()
                 )
             """)
-            cursor.execute("INSERT INTO upload_logs (filename) VALUES (?)", (filename,))
+            cursor.execute(
+                "INSERT INTO upload_logs (filename) VALUES (?)",
+                (filename,)
+            )
             conn.commit()
         return "Saved to database"
     except Exception as e:
         return f"DB error: {e}"
 
 
-# ---------------- DATA STORAGE ----------------
+def row_to_dict(row):
+    return {
+        "id": row[0],
+        "reservation_time": row[1] or "",
+        "group_name": row[2] or "",
+        "players": row[3] or "",
+        "num_players": str(row[4]) if row[4] is not None else "",
+        "walkers": str(row[5]) if row[5] is not None else "",
+        "riders": str(row[6]) if row[6] is not None else "",
+        "group_type": row[7] or "",
+        "front": row[8] or "",
+        "back": row[9] or "",
+        "rotation": row[10] or "",
+        "total_time": row[11] or "",
+        "average_hole": row[12] or "",
+        "display_order": row[13]
+    }
+
+
+def get_active_sheet():
+    with get_connection() as conn:
+        cursor = conn.cursor()
+        cursor.execute("""
+            SELECT TOP 1 id, sheet_date, source_filename
+            FROM dbo.tee_sheets
+            WHERE is_active = 1
+            ORDER BY updated_at DESC, id DESC
+        """)
+        row = cursor.fetchone()
+
+    if not row:
+        return None
+
+    return {
+        "id": row[0],
+        "date": row[1].strftime("%B %d, %Y") if row[1] else "",
+        "source_filename": row[2] or ""
+    }
+
+
+def get_sheet_rows(sheet_id):
+    with get_connection() as conn:
+        cursor = conn.cursor()
+        cursor.execute("""
+            SELECT
+                id,
+                reservation_time,
+                group_name,
+                players,
+                num_players,
+                walkers,
+                riders,
+                group_type,
+                front_course,
+                back_course,
+                rotation,
+                total_time,
+                average_hole,
+                display_order
+            FROM dbo.tee_sheet_rows
+            WHERE tee_sheet_id = ?
+            ORDER BY display_order, id
+        """, (sheet_id,))
+        rows = cursor.fetchall()
+
+    return [row_to_dict(r) for r in rows]
+
 
 def load_data():
-    if not os.path.exists(STATE_FILE):
-        return {"rows": [], "date": ""}
+    sheet = get_active_sheet()
+    if not sheet:
+        return {"sheet_id": None, "rows": [], "date": ""}
 
-    with open(STATE_FILE, "r", encoding="utf-8") as f:
-        return json.load(f)
+    return {
+        "sheet_id": sheet["id"],
+        "rows": get_sheet_rows(sheet["id"]),
+        "date": sheet["date"]
+    }
 
 
-def save_data(data):
-    with open(STATE_FILE, "w", encoding="utf-8") as f:
-        json.dump(data, f)
+def create_new_sheet(sheet_date, source_filename, rows):
+    with get_connection() as conn:
+        cursor = conn.cursor()
+
+        # Deactivate current active sheet
+        cursor.execute("""
+            UPDATE dbo.tee_sheets
+            SET is_active = 0,
+                updated_at = GETDATE()
+            WHERE is_active = 1
+        """)
+
+        # Create new sheet
+        cursor.execute("""
+            INSERT INTO dbo.tee_sheets (sheet_date, source_filename, is_active)
+            OUTPUT INSERTED.id
+            VALUES (?, ?, 1)
+        """, (sheet_date, source_filename))
+
+        tee_sheet_id = cursor.fetchone()[0]
+
+        # Insert rows
+        for idx, row in enumerate(rows):
+            cursor.execute("""
+                INSERT INTO dbo.tee_sheet_rows (
+                    tee_sheet_id,
+                    reservation_time,
+                    group_name,
+                    players,
+                    num_players,
+                    walkers,
+                    riders,
+                    group_type,
+                    front_course,
+                    back_course,
+                    rotation,
+                    total_time,
+                    average_hole,
+                    display_order
+                )
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            """, (
+                tee_sheet_id,
+                row.get("reservation_time") or "",
+                row.get("group_name") or "",
+                row.get("players") or "",
+                int(row["num_players"]) if str(row.get("num_players", "")).isdigit() else None,
+                int(row["walkers"]) if str(row.get("walkers", "")).isdigit() else None,
+                int(row["riders"]) if str(row.get("riders", "")).isdigit() else None,
+                row.get("group_type") or "",
+                row.get("front") or "",
+                row.get("back") or "",
+                row.get("rotation") or "",
+                row.get("total_time") or "",
+                row.get("average_hole") or "",
+                idx
+            ))
+
+        conn.commit()
+
+    return tee_sheet_id
 
 
-# ---------------- HELPERS ----------------
-def sort_rows_by_time(rows):
+def get_active_sheet_id():
+    sheet = get_active_sheet()
+    return sheet["id"] if sheet else None
+
+
+def add_row_to_active_sheet(row_data, insert_at_top=True):
+    sheet_id = get_active_sheet_id()
+    if not sheet_id:
+        return None
+
+    with get_connection() as conn:
+        cursor = conn.cursor()
+
+        if insert_at_top:
+            cursor.execute("""
+                UPDATE dbo.tee_sheet_rows
+                SET display_order = display_order + 1,
+                    updated_at = GETDATE()
+                WHERE tee_sheet_id = ?
+            """, (sheet_id,))
+            display_order = 0
+        else:
+            cursor.execute("""
+                SELECT ISNULL(MAX(display_order), -1) + 1
+                FROM dbo.tee_sheet_rows
+                WHERE tee_sheet_id = ?
+            """, (sheet_id,))
+            display_order = cursor.fetchone()[0]
+
+        cursor.execute("""
+            INSERT INTO dbo.tee_sheet_rows (
+                tee_sheet_id,
+                reservation_time,
+                group_name,
+                players,
+                num_players,
+                walkers,
+                riders,
+                group_type,
+                front_course,
+                back_course,
+                rotation,
+                total_time,
+                average_hole,
+                display_order
+            )
+            OUTPUT INSERTED.id
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        """, (
+            sheet_id,
+            row_data.get("reservation_time") or "",
+            row_data.get("group_name") or "",
+            row_data.get("players") or "",
+            int(row_data["num_players"]) if str(row_data.get("num_players", "")).isdigit() else None,
+            int(row_data["walkers"]) if str(row_data.get("walkers", "")).isdigit() else None,
+            int(row_data["riders"]) if str(row_data.get("riders", "")).isdigit() else None,
+            row_data.get("group_type") or "",
+            row_data.get("front") or "",
+            row_data.get("back") or "",
+            row_data.get("rotation") or "",
+            row_data.get("total_time") or "",
+            row_data.get("average_hole") or "",
+            display_order
+        ))
+
+        new_row_id = cursor.fetchone()[0]
+
+        cursor.execute("""
+            UPDATE dbo.tee_sheets
+            SET updated_at = GETDATE()
+            WHERE id = ?
+        """, (sheet_id,))
+
+        conn.commit()
+
+    return new_row_id
+
+
+def sort_rows_by_time_db(sheet_id):
+    rows = get_sheet_rows(sheet_id)
+
     def parse_time(row):
         value = (row.get("reservation_time") or "").strip()
         if not value:
@@ -74,6 +281,27 @@ def sort_rows_by_time(rows):
 
     rows.sort(key=parse_time)
 
+    with get_connection() as conn:
+        cursor = conn.cursor()
+
+        for idx, row in enumerate(rows):
+            cursor.execute("""
+                UPDATE dbo.tee_sheet_rows
+                SET display_order = ?,
+                    updated_at = GETDATE()
+                WHERE id = ?
+            """, (idx, row["id"]))
+
+        cursor.execute("""
+            UPDATE dbo.tee_sheets
+            SET updated_at = GETDATE()
+            WHERE id = ?
+        """, (sheet_id,))
+
+        conn.commit()
+
+
+# ---------------- HELPERS ----------------
 
 def player_count_options(num):
     return list(range(0, int(num) + 1)) if str(num).isdigit() else [0, 1, 2, 3, 4]
@@ -124,12 +352,10 @@ def extract_pdf_text(path):
     while i < len(lines):
         line = lines[i]
 
-        # Case 1: normal tee time line by itself, e.g. "08:00 AM"
         if time_only_pattern.match(line):
             reservation_time = line
             i += 1
 
-            # Empty slot
             if i < len(lines) and lines[i] == "E":
                 i += 1
                 continue
@@ -168,7 +394,6 @@ def extract_pdf_text(path):
                 })
             continue
 
-        # Case 2: compressed one-line row, e.g. "04:05 PM R CHILD-G Danckwerth, Jessica ..."
         inline_time_match = inline_time_pattern.match(line)
         if inline_time_match:
             reservation_time = inline_time_match.group(1)
@@ -228,12 +453,7 @@ def upload():
 
     rows = extract_pdf_text(temp_path)
 
-    data = {
-        "rows": rows,
-        "date": datetime.now().strftime("%B %d, %Y")
-    }
-
-    save_data(data)
+    create_new_sheet(datetime.now().date(), file.filename, rows)
     log_upload(file.filename)
 
     if os.path.exists(temp_path):
@@ -261,9 +481,7 @@ def tee_sheet():
 
 @app.route("/add-reservation", methods=["POST"])
 def add_reservation():
-    data = load_data()
-
-    data["rows"].insert(0, {
+    new_row_id = add_row_to_active_sheet({
         "reservation_time": "",
         "group_name": "",
         "players": "",
@@ -276,31 +494,75 @@ def add_reservation():
         "rotation": "",
         "total_time": "",
         "average_hole": ""
-    })
+    }, insert_at_top=True)
 
-    save_data(data)
+    if new_row_id is None:
+        return redirect("/")
+
     return redirect("/tee-sheet?edit=0#row-0")
 
 
 @app.route("/save/<int:index>", methods=["POST"])
 def save(index):
     data = load_data()
+
+    if index < 0 or index >= len(data["rows"]):
+        return redirect("/tee-sheet")
+
     row = data["rows"][index]
+    row_id = row["id"]
+    sheet_id = data["sheet_id"]
 
     players_text = (request.form.get("players") or "").strip()
     player_list = [p.strip() for p in players_text.split(",") if p.strip()]
 
-    row["reservation_time"] = request.form.get("reservation_time", "").strip()
-    row["players"] = players_text
-    row["num_players"] = str(len(player_list))
-    row["group_name"] = f"{player_list[0]} Group" if player_list else ""
-    row["walkers"] = request.form.get("walkers", "")
-    row["front"] = request.form.get("front", "")
-    row["back"] = request.form.get("back", "")
-    row["total_time"] = request.form.get("total_time", "")
+    reservation_time = request.form.get("reservation_time", "").strip()
+    walkers = request.form.get("walkers", "").strip()
+    front = request.form.get("front", "").strip()
+    back = request.form.get("back", "").strip()
+    total_time = request.form.get("total_time", "").strip()
 
-    sort_rows_by_time(data["rows"])
-    save_data(data)
+    num_players = len(player_list)
+    group_name = f"{player_list[0]} Group" if player_list else ""
+    riders = num_players - int(walkers) if walkers.isdigit() else None
+
+    with get_connection() as conn:
+        cursor = conn.cursor()
+        cursor.execute("""
+            UPDATE dbo.tee_sheet_rows
+            SET reservation_time = ?,
+                group_name = ?,
+                players = ?,
+                num_players = ?,
+                walkers = ?,
+                riders = ?,
+                front_course = ?,
+                back_course = ?,
+                total_time = ?,
+                updated_at = GETDATE()
+            WHERE id = ?
+        """, (
+            reservation_time,
+            group_name,
+            players_text,
+            num_players if player_list else None,
+            int(walkers) if walkers.isdigit() else None,
+            riders,
+            front,
+            back,
+            total_time,
+            row_id
+        ))
+
+        cursor.execute("""
+            UPDATE dbo.tee_sheets
+            SET updated_at = GETDATE()
+            WHERE id = ?
+        """, (sheet_id,))
+
+        conn.commit()
+
+    sort_rows_by_time_db(sheet_id)
 
     return redirect("/tee-sheet")
 
@@ -308,15 +570,48 @@ def save(index):
 @app.route("/delete/<int:index>", methods=["POST"])
 def delete(index):
     data = load_data()
-    data["rows"].pop(index)
-    save_data(data)
+
+    if index < 0 or index >= len(data["rows"]):
+        return redirect("/tee-sheet")
+
+    row_id = data["rows"][index]["id"]
+    sheet_id = data["sheet_id"]
+
+    with get_connection() as conn:
+        cursor = conn.cursor()
+
+        cursor.execute("DELETE FROM dbo.tee_sheet_rows WHERE id = ?", (row_id,))
+        cursor.execute("""
+            UPDATE dbo.tee_sheets
+            SET updated_at = GETDATE()
+            WHERE id = ?
+        """, (sheet_id,))
+
+        conn.commit()
+
+    sort_rows_by_time_db(sheet_id)
+
     return redirect("/tee-sheet")
 
 
 @app.route("/clear-tee-sheet", methods=["POST"])
 def clear():
-    if os.path.exists(STATE_FILE):
-        os.remove(STATE_FILE)
+    sheet_id = get_active_sheet_id()
+
+    if sheet_id is not None:
+        with get_connection() as conn:
+            cursor = conn.cursor()
+
+            cursor.execute("DELETE FROM dbo.tee_sheet_rows WHERE tee_sheet_id = ?", (sheet_id,))
+            cursor.execute("""
+                UPDATE dbo.tee_sheets
+                SET is_active = 0,
+                    updated_at = GETDATE()
+                WHERE id = ?
+            """, (sheet_id,))
+
+            conn.commit()
+
     return redirect("/")
 
 
