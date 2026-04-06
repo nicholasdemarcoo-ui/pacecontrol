@@ -222,6 +222,73 @@ def tee_sheet():
         edit_id=edit_id,
         player_count_options=player_count_options
     )
+@app.route("/add-reservation", methods=["POST"])
+def add_reservation():
+    data = load_data()
+
+    data["rows"].insert(0, {
+        "reservation_time": "",
+        "group_name": "",
+        "players": "",
+        "num_players": "",
+        "walkers": "",
+        "riders": "",
+        "group_type": "",
+        "front": "",
+        "back": "",
+        "rotation": "",
+        "total_time": "",
+        "average_hole": ""
+    })
+
+    save_data(data)
+    return redirect("/tee-sheet?edit=0#row-0")
+
+
+@app.route("/save/<int:index>", methods=["POST"])
+def save(index):
+    data = load_data()
+
+    if index < 0 or index >= len(data["rows"]):
+        return redirect("/tee-sheet")
+
+    row = data["rows"][index]
+
+    players_text = (request.form.get("players") or "").strip()
+    player_list = [p.strip() for p in players_text.split(",") if p.strip()]
+
+    row["reservation_time"] = request.form.get("reservation_time", "").strip()
+    row["players"] = players_text
+    row["num_players"] = str(len(player_list))
+    row["group_name"] = f"{player_list[0]} Group" if player_list else ""
+    row["walkers"] = request.form.get("walkers", "")
+    row["front"] = request.form.get("front", "")
+    row["back"] = request.form.get("back", "")
+    row["total_time"] = request.form.get("total_time", "")
+
+    sort_rows_by_time(data["rows"])
+    save_data(data)
+
+    return redirect("/tee-sheet")
+
+
+@app.route("/delete/<int:index>", methods=["POST"])
+def delete(index):
+    data = load_data()
+
+    if 0 <= index < len(data["rows"]):
+        data["rows"].pop(index)
+        save_data(data)
+
+    return redirect("/tee-sheet")
+
+
+@app.route("/clear-tee-sheet", methods=["POST"])
+def clear():
+    if os.path.exists(STATE_FILE):
+        os.remove(STATE_FILE)
+    return redirect("/")    
+
 
 
 # ---------------- RUN ----------------
