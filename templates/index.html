@@ -155,18 +155,22 @@
             </button>
         </form>
 
-        {% if extracted_text %}
-            <button class="btn btn-open btn-disabled" disabled>
-                Tee Sheet Loaded Below
-            </button>
-        {% else %}
-            <button class="btn btn-open btn-disabled" disabled>
-                No Tee Sheet Available
-            </button>
-            <div class="helper-text">
-                Upload a tee sheet to get started
-            </div>
-        {% endif %}
+        <div id="tee-sheet-button-area">
+            {% if has_sheet %}
+                <a href="/tee-sheet" style="text-decoration: none;">
+                    <button class="btn btn-open" type="button">
+                        Open Tee Sheet
+                    </button>
+                </a>
+            {% else %}
+                <button class="btn btn-open btn-disabled" disabled>
+                    No Tee Sheet Available
+                </button>
+                <div class="helper-text">
+                    Upload a tee sheet to get started
+                </div>
+            {% endif %}
+        </div>
 
         {% if extracted_text %}
             <h2 class="section-title">Extracted Text</h2>
@@ -174,6 +178,41 @@
         {% endif %}
 
     </div>
+
+    <script>
+        async function checkTeeSheetStatus() {
+            try {
+                const response = await fetch("/api/status");
+                const data = await response.json();
+
+                const buttonArea = document.getElementById("tee-sheet-button-area");
+
+                if (data.has_sheet) {
+                    buttonArea.innerHTML = `
+                        <a href="/tee-sheet" style="text-decoration: none;">
+                            <button class="btn btn-open" type="button">
+                                Open Tee Sheet
+                            </button>
+                        </a>
+                    `;
+                } else {
+                    buttonArea.innerHTML = `
+                        <button class="btn btn-open btn-disabled" disabled>
+                            No Tee Sheet Available
+                        </button>
+                        <div class="helper-text">
+                            Upload a tee sheet to get started
+                        </div>
+                    `;
+                }
+            } catch (error) {
+                console.error("Status check failed:", error);
+            }
+        }
+
+        setInterval(checkTeeSheetStatus, 5000);
+        checkTeeSheetStatus();
+    </script>
 
 </body>
 </html>

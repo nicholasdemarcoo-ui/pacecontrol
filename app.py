@@ -5,7 +5,7 @@ from datetime import datetime
 
 import fitz
 from dotenv import load_dotenv
-from flask import Flask, redirect, render_template, request
+from flask import Flask, redirect, render_template, request, jsonify
 from mssql_python import connect
 
 load_dotenv()
@@ -58,6 +58,7 @@ def save_data(data):
 
 
 # ---------------- HELPERS ----------------
+
 def sort_rows_by_time(rows):
     def parse_time(row):
         value = (row.get("reservation_time") or "").strip()
@@ -207,10 +208,24 @@ def extract_pdf_text(path):
 @app.route("/")
 def home():
     data = load_data()
+    has_sheet = len(data["rows"]) > 0
+
     return render_template(
         "index.html",
-        has_sheet=len(data["rows"]) > 0
+        has_sheet=has_sheet,
+        db_status="Connected",
+        upload_status=None,
+        uploaded_filename=None,
+        extracted_text=None
     )
+
+
+@app.route("/api/status")
+def api_status():
+    data = load_data()
+    return jsonify({
+        "has_sheet": len(data["rows"]) > 0
+    })
 
 
 @app.route("/upload", methods=["POST"])
