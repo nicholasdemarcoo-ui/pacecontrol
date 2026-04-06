@@ -9,7 +9,7 @@
         body {
             margin: 0;
             font-family: Arial, sans-serif;
-            background: #f0f2f5;
+            background: #f7f7f7;
             display: flex;
             align-items: center;
             justify-content: center;
@@ -18,43 +18,29 @@
 
         .container {
             background: white;
-            padding: 50px 40px;
-            border-radius: 18px;
-            box-shadow: 0 6px 18px rgba(0,0,0,0.1);
+            padding: 40px;
+            border-radius: 16px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.08);
             text-align: center;
-            width: 420px;
+            width: 320px;
         }
 
         h1 {
-            margin-bottom: 10px;
-            font-size: 32px;
-        }
-
-        .subtitle {
-            font-size: 14px;
-            color: #777;
             margin-bottom: 30px;
-        }
-
-        .file-input {
-            width: 100%;
-            margin-bottom: 16px;
-        }
-
-        input[type="file"] {
-            width: 100%;
+            font-size: 28px;
         }
 
         .btn {
             display: block;
             width: 100%;
-            height: 50px;
-            border-radius: 12px;
+            padding: 12px;
+            margin-top: 12px;
+            border-radius: 10px;
+            text-decoration: none;
             font-size: 16px;
             font-weight: bold;
             border: none;
             cursor: pointer;
-            margin-top: 12px;
         }
 
         .btn-upload {
@@ -67,10 +53,9 @@
             color: white;
         }
 
-        .divider {
-            margin: 20px 0;
-            font-size: 13px;
-            color: #aaa;
+        input[type="file"] {
+            margin-top: 10px;
+            width: 100%;
         }
 
     </style>
@@ -81,36 +66,17 @@
     <div class="container">
 
         <h1>Pace Control</h1>
-        <div class="subtitle">Tee Sheet Manager</div>
 
         <form action="/upload" method="POST" enctype="multipart/form-data">
-
-            <div class="file-input">
-                <input type="file" name="tee_sheet_pdf" required>
-            </div>
-
+            <input type="file" name="tee_sheet_pdf" required>
             <button class="btn btn-upload" type="submit">
                 Upload Tee Sheet
             </button>
-
         </form>
 
-        <div class="divider">or</div>
-
-        <a href="/tee-sheet">
-            <button class="btn btn-open">
-                Open Tee Sheet
-            </button>
+        <a href="/tee-sheet" class="btn btn-open">
+            Open Tee Sheet
         </a>
-        <form action="/clear-tee-sheet" method="POST" style="margin-top: 20px;">
-            <button 
-                class="btn"
-                style="background: #c62828; color: white;"
-                onclick="return confirm('Are you sure you want to clear the tee sheet?')"
-            >
-                Clear Tee Sheet
-            </button>
-        </form>
 
     </div>
 
