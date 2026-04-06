@@ -1,6 +1,5 @@
-flask
+Flask
+PyMuPDF
 gunicorn
-pymupdf
-pymssql
-sqlalchemy
-psycopg[binary]
+python-dotenv
+mssql-python

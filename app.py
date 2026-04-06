@@ -1,30 +1,22 @@
-import pymssql
+from os import getenv
+from dotenv import load_dotenv
+from mssql_python import connect
 
-conn = pymssql.connect(
-    server='pace-control.database.windows.net',
-    user='adminuser',
-    password='YOUR_PASSWORD',
-    database='tee_sheet_db'
-)
+load_dotenv()
 
-cursor = conn.cursor()
+def get_connection():
+    return connect(getenv("SQL_CONNECTION_STRING"))
 
-cursor = conn.cursor()
-import os
-import re
-import fitz
-from datetime import datetime
-from flask import Flask, render_template, request, redirect, url_for
-
-from db import SessionLocal
-from init_db import init_db
-from models import TeeSheet, TeeSheetRow
-
-app = Flask(__name__)
-app.config["UPLOAD_FOLDER"] = "uploads"
-
-init_db()
-
+@app.route("/test-db")
+def test_db():
+    try:
+        with get_connection() as conn:
+            cursor = conn.cursor()
+            cursor.execute("SELECT 1")
+            row = cursor.fetchone()
+        return f"Database connected! Result: {row[0]}"
+    except Exception as e:
+        return f"Error: {e}"
 
 def parse_players(players_text: str):
     return [p.strip() for p in players_text.split(",") if p.strip()]
@@ -614,14 +606,6 @@ def delete_row(row_id):
             db.commit()
 
     return redirect(url_for("tee_sheet"))
-
-@app.route("/test-db")
-def test_db():
-    try:
-        cursor.execute("SELECT 1")
-        return "Database connected!"
-    except Exception as e:
-        return f"Error: {e}"
 
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 10000))
