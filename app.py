@@ -142,33 +142,6 @@ def upload():
 
     return redirect("/tee-sheet")
 
-
-@app.route("/upload", methods=["POST"])
-def upload():
-    file = request.files["tee_sheet_pdf"]
-
-    if not file:
-        return redirect("/")
-
-    temp_path = "temp.pdf"
-    file.save(temp_path)
-
-    rows = extract_pdf_text(temp_path)
-
-    data = {
-        "rows": rows,
-        "date": datetime.now().strftime("%B %d, %Y")
-    }
-
-    save_data(data)
-
-    log_upload(file.filename)
-
-    os.remove(temp_path)
-
-    return redirect("/tee-sheet")
-
-
 @app.route("/tee-sheet")
 def tee_sheet():
     data = load_data()
