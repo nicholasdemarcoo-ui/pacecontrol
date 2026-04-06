@@ -19,11 +19,12 @@ def get_connection():
 @app.route("/test-db")
 def test_db():
     try:
-        with get_connection() as conn:
-            cursor = conn.cursor()
-            cursor.execute("SELECT 1")
-            row = cursor.fetchone()
-        return f"Database connected! Result: {row[0]}"
+        return (
+            f"server={getenv('SQL_SERVER')} | "
+            f"database={getenv('SQL_DATABASE')} | "
+            f"user={getenv('SQL_USER')} | "
+            f"password_exists={'yes' if getenv('SQL_PASSWORD') else 'no'}"
+        )
     except Exception as e:
         return f"Error: {e}"
 
