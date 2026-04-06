@@ -400,7 +400,15 @@ def get_sheet_rows_as_dicts(db, sheet: TeeSheet):
 
 @app.route("/")
 def home():
-    return render_template("index.html")
+    with SessionLocal() as db:
+        sheet = get_latest_sheet(db)
+
+        has_sheet = False
+
+        if sheet and len(sheet.rows) > 0:
+            has_sheet = True
+
+    return render_template("index.html", has_sheet=has_sheet)
 
 
 @app.route("/upload", methods=["POST"])

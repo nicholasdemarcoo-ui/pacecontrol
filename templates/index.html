@@ -97,10 +97,17 @@
 
         <div class="divider">or</div>
 
-        <a href="/tee-sheet">
-            <button class="btn btn-open">
-                Open Tee Sheet
-            </button>
+{% if has_sheet %}
+    <a href="/tee-sheet">
+        <button class="btn btn-open">
+            Open Tee Sheet
+        </button>
+    </a>
+{% else %}
+    <button class="btn btn-open" disabled style="opacity: 0.5; cursor: not-allowed;">
+        No Tee Sheet Available
+    </button>
+{% endif %}
         </a>
 
     </div>
