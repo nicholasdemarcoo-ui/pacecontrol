@@ -1,15 +1,13 @@
-import pyodbc
+import pymssql
 
-conn = pyodbc.connect(
-    "DRIVER={ODBC Driver 18 for SQL Server};"
-    "SERVER=pace-control.database.windows.net;"
-    "DATABASE=tee_sheet_db;"
-    "UID=adminuser;"
-    "PWD=YOUR_PASSWORD;"
-    "Encrypt=yes;"
-    "TrustServerCertificate=no;"
-    "Connection Timeout=30;"
+conn = pymssql.connect(
+    server='pace-control.database.windows.net',
+    user='adminuser',
+    password='YOUR_PASSWORD',
+    database='tee_sheet_db'
 )
+
+cursor = conn.cursor()
 
 cursor = conn.cursor()
 import os

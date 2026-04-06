@@ -1,6 +1,6 @@
 flask
 gunicorn
 pymupdf
-pyodbc
+pymssql
 sqlalchemy
 psycopg[binary]
