@@ -73,7 +73,7 @@
             padding: 16px 20px;
             border-radius: 10px;
             box-shadow: 0 2px 8px rgba(0,0,0,0.08);
-            min-width: 380px;
+            min-width: 420px;
         }
 
         .summary-col {
@@ -212,6 +212,49 @@
         .col-total { width: 120px; }
         .col-average { width: 120px; }
 
+        .print-cover {
+            display: none;
+        }
+
+        .print-cover h1 {
+            font-size: 36px;
+            margin-bottom: 10px;
+        }
+
+        .print-cover .cover-date {
+            font-size: 20px;
+            margin-bottom: 25px;
+            color: #555;
+        }
+
+        .print-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 30px;
+            margin-top: 20px;
+        }
+
+        .print-section {
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            padding: 16px;
+        }
+
+        .print-section h2 {
+            margin-top: 0;
+            margin-bottom: 12px;
+            font-size: 20px;
+        }
+
+        .print-line {
+            margin-bottom: 8px;
+            font-size: 15px;
+        }
+
+        .rotation-list .print-line {
+            margin-bottom: 6px;
+        }
+
         @media print {
             body {
                 background: white;
@@ -221,17 +264,28 @@
                 position: static;
             }
 
+            .top-row {
+                display: none !important;
+            }
+
+            .print-cover {
+                display: block;
+                page-break-after: always;
+            }
+
             .body-table-wrap {
                 max-height: none !important;
                 overflow: visible !important;
             }
 
             .header-table-wrap {
-                overflow: visible !important;
+                display: none !important;
             }
 
             .table-shell {
                 box-shadow: none;
+                padding: 0;
+                margin-top: 0;
             }
 
             .btn,
@@ -256,6 +310,46 @@
 </head>
 <body>
     <div class="page-shell">
+
+        <div class="print-cover">
+            <h1>Tee Sheet Summary</h1>
+            {% if tee_sheet_date %}
+                <div class="cover-date">{{ tee_sheet_date }}</div>
+            {% endif %}
+
+            <div class="print-grid">
+                <div class="print-section">
+                    <h2>Totals</h2>
+                    <div class="print-line"><strong>Total # of Groups:</strong> {{ summary.groups }}</div>
+                    <div class="print-line"><strong>Total # of Walkers:</strong> {{ summary.total_walkers }}</div>
+                    <div class="print-line"><strong>Total # of Riders:</strong> {{ summary.total_riders }}</div>
+                </div>
+
+                <div class="print-section">
+                    <h2>Pace Summary</h2>
+                    <div class="print-line"><strong>Fastest Round:</strong> {{ summary.fastest }}{% if summary.fastest_name %} ({{ summary.fastest_name }}){% endif %}</div>
+                    <div class="print-line"><strong>Slowest Round:</strong> {{ summary.slowest }}{% if summary.slowest_name %} ({{ summary.slowest_name }}){% endif %}</div>
+                    <div class="print-line"><strong>Average Pace:</strong> {{ summary.average }}</div>
+                    <div class="print-line"><strong>Cart Average:</strong> {{ summary.cart_avg }}</div>
+                    <div class="print-line"><strong>Walk Average:</strong> {{ summary.walker_avg }}</div>
+                    <div class="print-line"><strong>Mixed Average:</strong> {{ summary.mixed_avg }}</div>
+                </div>
+            </div>
+
+            <div class="print-section rotation-list" style="margin-top: 30px;">
+                <h2>Course Rotation Pace</h2>
+                <div class="print-line"><strong>South-East:</strong> {{ summary.rotation_pace["South-East"] }}</div>
+                <div class="print-line"><strong>South-West:</strong> {{ summary.rotation_pace["South-West"] }}</div>
+                <div class="print-line"><strong>East-West:</strong> {{ summary.rotation_pace["East-West"] }}</div>
+                <div class="print-line"><strong>East-South:</strong> {{ summary.rotation_pace["East-South"] }}</div>
+                <div class="print-line"><strong>West-East:</strong> {{ summary.rotation_pace["West-East"] }}</div>
+                <div class="print-line"><strong>West-South:</strong> {{ summary.rotation_pace["West-South"] }}</div>
+                <div class="print-line"><strong>South:</strong> {{ summary.rotation_pace["South"] }}</div>
+                <div class="print-line"><strong>West:</strong> {{ summary.rotation_pace["West"] }}</div>
+                <div class="print-line"><strong>East:</strong> {{ summary.rotation_pace["East"] }}</div>
+            </div>
+        </div>
+
         <div class="sticky-header">
             <div class="top-row">
                 <div class="left-side">
@@ -277,13 +371,13 @@
 
                 <div class="summary-box">
                     <div class="summary-col">
-                        <div><strong>Groups:</strong> {{ summary.groups }}</div>
                         <div><strong>Fastest Round:</strong> {{ summary.fastest }}{% if summary.fastest_name %} ({{ summary.fastest_name }}){% endif %}</div>
                         <div><strong>Slowest Round:</strong> {{ summary.slowest }}{% if summary.slowest_name %} ({{ summary.slowest_name }}){% endif %}</div>
                         <div><strong>Average Pace:</strong> {{ summary.average }}</div>
                     </div>
 
                     <div class="summary-col">
+                        <div><strong>Groups:</strong> {{ summary.groups }}</div>
                         <div><strong>Cart Average:</strong> {{ summary.cart_avg }}</div>
                         <div><strong>Walk Average:</strong> {{ summary.walker_avg }}</div>
                         <div><strong>Mixed Average:</strong> {{ summary.mixed_avg }}</div>
