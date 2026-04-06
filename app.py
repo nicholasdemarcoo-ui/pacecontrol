@@ -56,6 +56,19 @@ def build_group_type(num_players, walkers, riders):
     return ""
 
 
+def build_rotation(front: str, back: str):
+    front = (front or "").strip()
+    back = (back or "").strip()
+
+    if front and back:
+        return f"{front}-{back}"
+    if front:
+        return front
+    if back:
+        return back
+    return ""
+
+
 def holes_for_rotation(rotation: str):
     if not rotation:
         return 18
@@ -326,6 +339,8 @@ def parse_tee_sheet_pdf(pdf_path: str):
             "walkers": "",
             "riders": "",
             "group_type": "",
+            "front": "",
+            "back": "",
             "rotation": "",
             "total_time": "",
             "average_hole": ""
@@ -390,6 +405,8 @@ def add_reservation():
         "walkers": "",
         "riders": "",
         "group_type": "",
+        "front": "",
+        "back": "",
         "rotation": "",
         "total_time": "",
         "average_hole": ""
@@ -411,7 +428,8 @@ def save_row(row_id):
     )
     players = request.form.get("players", "").strip()
     walkers = request.form.get("walkers", "").strip()
-    rotation = request.form.get("rotation", "").strip()
+    front = request.form.get("front", "").strip()
+    back = request.form.get("back", "").strip()
 
     raw_time = request.form.get("total_time", "").strip()
     mins = time_to_minutes(raw_time)
@@ -434,6 +452,7 @@ def save_row(row_id):
             riders = ""
 
     group_type = build_group_type(num_players, walkers, riders)
+    rotation = build_rotation(front, back)
     average_hole = build_average_hole(total_time, rotation)
 
     tee_sheet_rows[row_id] = {
@@ -444,6 +463,8 @@ def save_row(row_id):
         "walkers": walkers,
         "riders": riders,
         "group_type": group_type,
+        "front": front,
+        "back": back,
         "rotation": rotation,
         "total_time": total_time,
         "average_hole": average_hole
