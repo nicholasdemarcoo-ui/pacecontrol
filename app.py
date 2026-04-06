@@ -3,8 +3,12 @@ import re
 import fitz
 from datetime import datetime
 from flask import Flask, render_template, request, redirect, url_for
+from db import SessionLocal
+from init_db import init_db
+from models import TeeSheet, TeeSheetRow
 
 app = Flask(__name__)
+init_db()
 app.config["UPLOAD_FOLDER"] = "uploads"
 
 tee_sheet_rows = []
