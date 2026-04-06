@@ -1,8 +1,9 @@
+from flask import Flask
 from os import getenv
 from dotenv import load_dotenv
 from mssql_python import connect
 
-app = Flask(_name_)
+app = Flask(__name__)   # ✅ correct
 
 load_dotenv()
 
