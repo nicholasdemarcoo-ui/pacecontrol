@@ -13,16 +13,19 @@
             display: flex;
             align-items: center;
             justify-content: center;
-            height: 100vh;
+            min-height: 100vh;
+            padding: 24px;
+            box-sizing: border-box;
         }
 
         .container {
             background: white;
-            padding: 50px 40px;
+            padding: 40px 32px;
             border-radius: 18px;
             box-shadow: 0 6px 18px rgba(0,0,0,0.1);
             text-align: center;
-            width: 420px;
+            width: 100%;
+            max-width: 700px;
         }
 
         h1 {
@@ -33,7 +36,23 @@
         .subtitle {
             font-size: 14px;
             color: #777;
-            margin-bottom: 30px;
+            margin-bottom: 24px;
+        }
+
+        .status-box {
+            text-align: left;
+            background: #f8f9fb;
+            border: 1px solid #e2e6ea;
+            border-radius: 12px;
+            padding: 14px 16px;
+            margin-bottom: 18px;
+            font-size: 14px;
+            color: #333;
+        }
+
+        .status-line {
+            margin: 6px 0;
+            word-break: break-word;
         }
 
         input[type="file"] {
@@ -85,6 +104,27 @@
             color: #888;
         }
 
+        .text-output {
+            margin-top: 24px;
+            text-align: left;
+            background: #fafafa;
+            border: 1px solid #ddd;
+            border-radius: 12px;
+            padding: 16px;
+            max-height: 300px;
+            overflow-y: auto;
+            white-space: pre-wrap;
+            word-break: break-word;
+            font-size: 13px;
+            line-height: 1.5;
+        }
+
+        .section-title {
+            margin-top: 24px;
+            margin-bottom: 10px;
+            text-align: left;
+            font-size: 18px;
+        }
     </style>
 </head>
 
@@ -95,9 +135,20 @@
         <h1>Pace Control</h1>
         <div class="subtitle">Tee Sheet Manager</div>
 
-        <!-- Upload -->
+        <div class="status-box">
+            <div class="status-line"><strong>Database:</strong> {{ db_status or "Not checked yet" }}</div>
+
+            {% if upload_status %}
+                <div class="status-line"><strong>Upload:</strong> {{ upload_status }}</div>
+            {% endif %}
+
+            {% if uploaded_filename %}
+                <div class="status-line"><strong>File:</strong> {{ uploaded_filename }}</div>
+            {% endif %}
+        </div>
+
         <form action="/upload" method="POST" enctype="multipart/form-data">
-            <input type="file" name="tee_sheet_pdf" required>
+            <input type="file" name="pdf_file" accept=".pdf" required>
 
             <button class="btn btn-upload" type="submit">
                 Upload Tee Sheet
@@ -106,13 +157,10 @@
 
         <div class="divider">or</div>
 
-        <!-- Open Tee Sheet -->
-        {% if has_sheet %}
-            <a href="/tee-sheet">
-                <button class="btn btn-open">
-                    Open Tee Sheet
-                </button>
-            </a>
+        {% if extracted_text %}
+            <button class="btn btn-open btn-disabled" disabled>
+                Tee Sheet Loaded Below
+            </button>
         {% else %}
             <button class="btn btn-open btn-disabled" disabled>
                 No Tee Sheet Available
@@ -122,16 +170,9 @@
             </div>
         {% endif %}
 
-        <!-- Clear Tee Sheet -->
-        {% if has_sheet %}
-        <form action="/clear-tee-sheet" method="POST">
-            <button 
-                class="btn btn-clear"
-                onclick="return confirm('Are you sure you want to clear the tee sheet?')"
-            >
-                Clear Tee Sheet
-            </button>
-        </form>
+        {% if extracted_text %}
+            <h2 class="section-title">Extracted Text</h2>
+            <div class="text-output">{{ extracted_text }}</div>
         {% endif %}
 
     </div>
