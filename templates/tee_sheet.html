@@ -182,7 +182,7 @@
             align-items: center;
             justify-content: center;
             flex-wrap: nowrap;
-        }       
+        }
 
         .btn {
             display: inline-block;
@@ -222,7 +222,7 @@
             margin: 0;
         }
 
-        .col-actions { width: 160px; }
+        .col-actions { width: 135px; }
         .col-time { width: 100px; }
         .col-group { width: 220px; }
         .col-players { width: 320px; }
@@ -295,6 +295,32 @@
 
         .rotation-list .print-line {
             margin-bottom: 6px;
+        }
+
+        .print-rotation-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 24px;
+            margin-top: 15px;
+            text-align: center;
+        }
+
+        .rotation-col {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            align-items: center;
+            text-align: center;
+        }
+
+        .rotation-title {
+            font-size: 18px;
+            font-weight: bold;
+            margin-bottom: 6px;
+            border-bottom: 1px solid #ccc;
+            padding-bottom: 4px;
+            width: 100%;
+            text-align: center;
         }
 
         @media print {
@@ -429,15 +455,26 @@
 
             <div class="print-section rotation-list" style="margin-top: 30px;">
                 <h2>Course Rotation Pace</h2>
-                <div class="print-line"><strong>South-East:</strong> {{ summary.rotation_pace["South-East"] }}</div>
-                <div class="print-line"><strong>South-West:</strong> {{ summary.rotation_pace["South-West"] }}</div>
-                <div class="print-line"><strong>East-West:</strong> {{ summary.rotation_pace["East-West"] }}</div>
-                <div class="print-line"><strong>East-South:</strong> {{ summary.rotation_pace["East-South"] }}</div>
-                <div class="print-line"><strong>West-East:</strong> {{ summary.rotation_pace["West-East"] }}</div>
-                <div class="print-line"><strong>West-South:</strong> {{ summary.rotation_pace["West-South"] }}</div>
-                <div class="print-line"><strong>South:</strong> {{ summary.rotation_pace["South"] }}</div>
-                <div class="print-line"><strong>West:</strong> {{ summary.rotation_pace["West"] }}</div>
-                <div class="print-line"><strong>East:</strong> {{ summary.rotation_pace["East"] }}</div>
+
+                <div class="print-rotation-grid">
+                    <div class="rotation-col">
+                        <div class="rotation-title">East</div>
+                        <div class="print-line"><strong>East-West:</strong> {{ summary.rotation_pace["East-West"] }}</div>
+                        <div class="print-line"><strong>East-South:</strong> {{ summary.rotation_pace["East-South"] }}</div>
+                    </div>
+
+                    <div class="rotation-col">
+                        <div class="rotation-title">South</div>
+                        <div class="print-line"><strong>South-East:</strong> {{ summary.rotation_pace["South-East"] }}</div>
+                        <div class="print-line"><strong>South-West:</strong> {{ summary.rotation_pace["South-West"] }}</div>
+                    </div>
+
+                    <div class="rotation-col">
+                        <div class="rotation-title">West</div>
+                        <div class="print-line"><strong>West-East:</strong> {{ summary.rotation_pace["West-East"] }}</div>
+                        <div class="print-line"><strong>West-South:</strong> {{ summary.rotation_pace["West-South"] }}</div>
+                    </div>
+                </div>
             </div>
         </div>
 
