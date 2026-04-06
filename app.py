@@ -513,6 +513,20 @@ def add_reservation():
 
     return redirect(url_for("tee_sheet", edit=0))
 
+@app.route("/clear-tee-sheet", methods=["POST"])
+def clear_tee_sheet():
+    with SessionLocal() as db:
+        sheet = get_latest_sheet(db)
+
+        if sheet:
+            db.query(TeeSheetRow).filter(
+                TeeSheetRow.tee_sheet_id == sheet.id
+            ).delete()
+
+            db.commit()
+
+    return redirect(url_for("home"))
+
 
 @app.route("/save/<int:row_id>", methods=["POST"])
 def save_row(row_id):

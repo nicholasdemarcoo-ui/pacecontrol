@@ -9,7 +9,7 @@
         body {
             margin: 0;
             font-family: Arial, sans-serif;
-            background: #f7f7f7;
+            background: #f0f2f5;
             display: flex;
             align-items: center;
             justify-content: center;
@@ -18,29 +18,39 @@
 
         .container {
             background: white;
-            padding: 40px;
-            border-radius: 16px;
-            box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+            padding: 50px 40px;
+            border-radius: 18px;
+            box-shadow: 0 6px 18px rgba(0,0,0,0.1);
             text-align: center;
-            width: 320px;
+            width: 420px;
         }
 
         h1 {
+            margin-bottom: 10px;
+            font-size: 32px;
+        }
+
+        .subtitle {
+            font-size: 14px;
+            color: #777;
             margin-bottom: 30px;
-            font-size: 28px;
+        }
+
+        input[type="file"] {
+            width: 100%;
+            margin-bottom: 16px;
         }
 
         .btn {
             display: block;
             width: 100%;
-            padding: 12px;
-            margin-top: 12px;
-            border-radius: 10px;
-            text-decoration: none;
+            height: 50px;
+            border-radius: 12px;
             font-size: 16px;
             font-weight: bold;
             border: none;
             cursor: pointer;
+            margin-top: 12px;
         }
 
         .btn-upload {
@@ -53,9 +63,26 @@
             color: white;
         }
 
-        input[type="file"] {
-            margin-top: 10px;
-            width: 100%;
+        .btn-clear {
+            background: #c62828;
+            color: white;
+        }
+
+        .btn-disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        .divider {
+            margin: 20px 0;
+            font-size: 13px;
+            color: #aaa;
+        }
+
+        .helper-text {
+            margin-top: 8px;
+            font-size: 12px;
+            color: #888;
         }
 
     </style>
@@ -66,17 +93,46 @@
     <div class="container">
 
         <h1>Pace Control</h1>
+        <div class="subtitle">Tee Sheet Manager</div>
 
+        <!-- Upload -->
         <form action="/upload" method="POST" enctype="multipart/form-data">
             <input type="file" name="tee_sheet_pdf" required>
+
             <button class="btn btn-upload" type="submit">
                 Upload Tee Sheet
             </button>
         </form>
 
-        <a href="/tee-sheet" class="btn btn-open">
-            Open Tee Sheet
-        </a>
+        <div class="divider">or</div>
+
+        <!-- Open Tee Sheet -->
+        {% if has_sheet %}
+            <a href="/tee-sheet">
+                <button class="btn btn-open">
+                    Open Tee Sheet
+                </button>
+            </a>
+        {% else %}
+            <button class="btn btn-open btn-disabled" disabled>
+                No Tee Sheet Available
+            </button>
+            <div class="helper-text">
+                Upload a tee sheet to get started
+            </div>
+        {% endif %}
+
+        <!-- Clear Tee Sheet -->
+        {% if has_sheet %}
+        <form action="/clear-tee-sheet" method="POST">
+            <button 
+                class="btn btn-clear"
+                onclick="return confirm('Are you sure you want to clear the tee sheet?')"
+            >
+                Clear Tee Sheet
+            </button>
+        </form>
+        {% endif %}
 
     </div>
 
