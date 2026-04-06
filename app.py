@@ -193,7 +193,7 @@ def apply_derived_fields(row):
 
 
 def calculate_summary(rows):
-    def time_to_minutes(value):
+    def round_time_to_minutes(value):
         value = (value or "").strip()
         if not value or ":" not in value:
             return None
@@ -204,7 +204,7 @@ def calculate_summary(rows):
         except Exception:
             return None
 
-    def minutes_to_time(total_minutes):
+    def minutes_to_round_time(total_minutes):
         if total_minutes is None:
             return "-"
 
@@ -212,22 +212,51 @@ def calculate_summary(rows):
         minutes = total_minutes % 60
         return f"{hours}:{minutes:02d}"
 
+    def avg_hole_to_seconds(value):
+        value = (value or "").strip()
+        if not value or ":" not in value:
+            return None
+
+        try:
+            minutes, seconds = value.split(":")
+            return int(minutes) * 60 + int(seconds)
+        except Exception:
+            return None
+
+    def seconds_to_avg_hole(total_seconds):
+        if total_seconds is None:
+            return "-"
+
+        minutes = total_seconds // 60
+        seconds = total_seconds % 60
+        return f"{minutes}:{seconds:02d}"
+
     valid_rounds = []
     cart_rounds = []
     walk_rounds = []
     mixed_rounds = []
+
+    rotation_buckets = {
+        "South-East": [],
+        "South-West": [],
+        "East-West": [],
+        "East-South": [],
+        "West-East": [],
+        "West-South": [],
+        "South": [],
+        "West": [],
+        "East": []
+    }
 
     fastest_name = ""
     slowest_name = ""
 
     for row in rows:
         total_time_str = row.get("total_time", "")
-        total_minutes = time_to_minutes(total_time_str)
+        total_minutes = round_time_to_minutes(total_time_str)
 
-        if total_minutes is None:
-            continue
-
-        valid_rounds.append((total_minutes, row.get("group_name", "")))
+        if total_minutes is not None:
+            valid_rounds.append((total_minutes, row.get("group_name", "")))
 
         try:
             num_players = int(row.get("num_players") or 0)
@@ -244,15 +273,21 @@ def calculate_summary(rows):
         except Exception:
             riders = None
 
-        if walkers is None or riders is None or num_players == 0:
-            continue
+        if walkers is not None and riders is not None and num_players > 0 and total_minutes is not None:
+            if riders == num_players and walkers == 0:
+                cart_rounds.append(total_minutes)
+            elif walkers == num_players and riders == 0:
+                walk_rounds.append(total_minutes)
+            elif walkers > 0 and riders > 0:
+                mixed_rounds.append(total_minutes)
 
-        if riders == num_players and walkers == 0:
-            cart_rounds.append(total_minutes)
-        elif walkers == num_players and riders == 0:
-            walk_rounds.append(total_minutes)
-        elif walkers > 0 and riders > 0:
-            mixed_rounds.append(total_minutes)
+        # rotation pace from rotation + average_hole
+        rotation = (row.get("rotation") or "").strip()
+        avg_hole = row.get("average_hole", "")
+        avg_seconds = avg_hole_to_seconds(avg_hole)
+
+        if rotation in rotation_buckets and avg_seconds is not None:
+            rotation_buckets[rotation].append(avg_seconds)
 
     fastest = "-"
     slowest = "-"
@@ -264,13 +299,20 @@ def calculate_summary(rows):
 
         avg_minutes = round(sum(t for t, _ in valid_rounds) / len(valid_rounds))
 
-        fastest = minutes_to_time(fastest_minutes)
-        slowest = minutes_to_time(slowest_minutes)
-        average = minutes_to_time(avg_minutes)
+        fastest = minutes_to_round_time(fastest_minutes)
+        slowest = minutes_to_round_time(slowest_minutes)
+        average = minutes_to_round_time(avg_minutes)
 
-    cart_avg = minutes_to_time(round(sum(cart_rounds) / len(cart_rounds))) if cart_rounds else "-"
-    walk_avg = minutes_to_time(round(sum(walk_rounds) / len(walk_rounds))) if walk_rounds else "-"
-    mixed_avg = minutes_to_time(round(sum(mixed_rounds) / len(mixed_rounds))) if mixed_rounds else "-"
+    cart_avg = minutes_to_round_time(round(sum(cart_rounds) / len(cart_rounds))) if cart_rounds else "-"
+    walk_avg = minutes_to_round_time(round(sum(walk_rounds) / len(walk_rounds))) if walk_rounds else "-"
+    mixed_avg = minutes_to_round_time(round(sum(mixed_rounds) / len(mixed_rounds))) if mixed_rounds else "-"
+
+    rotation_pace = {}
+    for rotation_name, values in rotation_buckets.items():
+        if values:
+            rotation_pace[rotation_name] = seconds_to_avg_hole(round(sum(values) / len(values)))
+        else:
+            rotation_pace[rotation_name] = "-"
 
     return {
         "groups": len(rows),
@@ -284,17 +326,7 @@ def calculate_summary(rows):
         "cart_avg": cart_avg,
         "walker_avg": walk_avg,
         "mixed_avg": mixed_avg,
-        "rotation_pace": {
-            "South-East": "-",
-            "South-West": "-",
-            "East-West": "-",
-            "East-South": "-",
-            "West-East": "-",
-            "West-South": "-",
-            "South": "-",
-            "West": "-",
-            "East": "-"
-        }
+        "rotation_pace": rotation_pace
     }
 
 
