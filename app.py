@@ -14,7 +14,6 @@ def get_connection():
         user=getenv("SQL_USER"),
         password=getenv("SQL_PASSWORD"),
         port=1433,
-        encrypt="yes"
     )
 
 @app.route("/test-db")
