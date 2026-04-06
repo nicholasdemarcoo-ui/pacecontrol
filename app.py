@@ -58,6 +58,22 @@ def save_data(data):
 
 
 # ---------------- HELPERS ----------------
+def sort_rows_by_time(rows):
+    def parse_time(row):
+        value = (row.get("reservation_time") or "").strip()
+        if not value:
+            return datetime.max
+
+        for fmt in ("%I:%M %p", "%H:%M"):
+            try:
+                return datetime.strptime(value, fmt)
+            except ValueError:
+                continue
+
+        return datetime.max
+
+    rows.sort(key=parse_time)
+
 
 def player_count_options(num):
     return list(range(0, int(num) + 1)) if str(num).isdigit() else [0, 1, 2, 3, 4]
@@ -247,7 +263,7 @@ def tee_sheet():
 def add_reservation():
     data = load_data()
 
-    data["rows"].append({
+    data["rows"].insert(0, {
         "reservation_time": "",
         "group_name": "",
         "players": "",
@@ -263,7 +279,7 @@ def add_reservation():
     })
 
     save_data(data)
-    return redirect("/tee-sheet")
+    return redirect("/tee-sheet?edit=0#row-0")
 
 
 @app.route("/save/<int:index>", methods=["POST"])
@@ -274,7 +290,7 @@ def save(index):
     players_text = (request.form.get("players") or "").strip()
     player_list = [p.strip() for p in players_text.split(",") if p.strip()]
 
-    row["reservation_time"] = request.form.get("reservation_time", "")
+    row["reservation_time"] = request.form.get("reservation_time", "").strip()
     row["players"] = players_text
     row["num_players"] = str(len(player_list))
     row["group_name"] = f"{player_list[0]} Group" if player_list else ""
@@ -283,7 +299,9 @@ def save(index):
     row["back"] = request.form.get("back", "")
     row["total_time"] = request.form.get("total_time", "")
 
+    sort_rows_by_time(data["rows"])
     save_data(data)
+
     return redirect("/tee-sheet")
 
 
