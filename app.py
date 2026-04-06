@@ -566,19 +566,6 @@ def save(index):
 
     return redirect("/tee-sheet")
 
-
-@app.route("/")
-def home():
-    try:
-        data = load_data()
-        return render_template(
-            "index.html",
-            has_sheet=len(data["rows"]) > 0
-        )
-    except Exception as e:
-        return f"Home error: {e}"
-
-
 @app.route("/clear-tee-sheet", methods=["POST"])
 def clear():
     sheet_id = get_active_sheet_id()
