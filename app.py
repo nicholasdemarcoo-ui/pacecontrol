@@ -431,18 +431,13 @@ def extract_pdf_text(path):
 
 @app.route("/")
 def home():
-    try:
-        data = load_data()
+    data = load_data()
+    has_sheet = bool(data["sheet_id"]) and len(data["rows"]) > 0
 
-        print("DEBUG HOME DATA:", data)  # <-- shows in Render logs
-
-        return render_template(
-            "index.html",
-            has_sheet=len(data["rows"]) > 0
-        )
-
-    except Exception as e:
-        return f"Home error: {e}"
+    return render_template(
+        "index.html",
+        has_sheet=has_sheet
+    )
 
 
 @app.route("/upload", methods=["POST"])

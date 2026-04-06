@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Course Report</title>
+    <title>Pace Control</title>
 
     <style>
         body {
@@ -13,19 +13,16 @@
             display: flex;
             align-items: center;
             justify-content: center;
-            min-height: 100vh;
-            padding: 24px;
-            box-sizing: border-box;
+            height: 100vh;
         }
 
         .container {
             background: white;
-            padding: 40px 32px;
+            padding: 50px 40px;
             border-radius: 18px;
             box-shadow: 0 6px 18px rgba(0,0,0,0.1);
             text-align: center;
-            width: 100%;
-            max-width: 700px;
+            width: 420px;
         }
 
         h1 {
@@ -36,23 +33,7 @@
         .subtitle {
             font-size: 14px;
             color: #777;
-            margin-bottom: 24px;
-        }
-
-        .status-box {
-            text-align: left;
-            background: #f8f9fb;
-            border: 1px solid #e2e6ea;
-            border-radius: 12px;
-            padding: 14px 16px;
-            margin-bottom: 18px;
-            font-size: 14px;
-            color: #333;
-        }
-
-        .status-line {
-            margin: 6px 0;
-            word-break: break-word;
+            margin-bottom: 30px;
         }
 
         input[type="file"] {
@@ -103,28 +84,6 @@
             font-size: 12px;
             color: #888;
         }
-
-        .text-output {
-            margin-top: 24px;
-            text-align: left;
-            background: #fafafa;
-            border: 1px solid #ddd;
-            border-radius: 12px;
-            padding: 16px;
-            max-height: 300px;
-            overflow-y: auto;
-            white-space: pre-wrap;
-            word-break: break-word;
-            font-size: 13px;
-            line-height: 1.5;
-        }
-
-        .section-title {
-            margin-top: 24px;
-            margin-bottom: 10px;
-            text-align: left;
-            font-size: 18px;
-        }
     </style>
 </head>
 
@@ -132,33 +91,27 @@
 
     <div class="container">
 
-        <h1>Tee Sheet & Pace Report</h1>
-        <div class="subtitle">Track Groups and their Pace</div>
+        <h1>Pace Control</h1>
+        <div class="subtitle">Tee Sheet Manager</div>
 
-        <div class="status-box">
-            <div class="status-line"><strong>Database:</strong> {{ db_status or "Not checked yet" }}</div>
-
-            {% if upload_status %}
-                <div class="status-line"><strong>Upload:</strong> {{ upload_status }}</div>
-            {% endif %}
-
-            {% if uploaded_filename %}
-                <div class="status-line"><strong>File:</strong> {{ uploaded_filename }}</div>
-            {% endif %}
-        </div>
-
+        <!-- Upload -->
         <form action="/upload" method="POST" enctype="multipart/form-data">
-            <input type="file" name="tee_sheet_pdf" accept=".pdf" required>
+            <input type="file" name="tee_sheet_pdf" required>
 
             <button class="btn btn-upload" type="submit">
                 Upload Tee Sheet
             </button>
         </form>
 
-        {% if extracted_text %}
-            <button class="btn btn-open btn-disabled" disabled>
-                Tee Sheet Loaded Below
-            </button>
+        <div class="divider">or</div>
+
+        <!-- Open Tee Sheet -->
+        {% if has_sheet == True %}
+            <a href="/tee-sheet" style="text-decoration: none;">
+                <button class="btn btn-open" type="button">
+                    Open Tee Sheet
+                </button>
+            </a>
         {% else %}
             <button class="btn btn-open btn-disabled" disabled>
                 No Tee Sheet Available
@@ -168,12 +121,26 @@
             </div>
         {% endif %}
 
-        {% if extracted_text %}
-            <h2 class="section-title">Extracted Text</h2>
-            <div class="text-output">{{ extracted_text }}</div>
+        <!-- Clear Tee Sheet -->
+        {% if has_sheet == True %}
+        <form action="/clear-tee-sheet" method="POST">
+            <button 
+                class="btn btn-clear"
+                onclick="return confirm('Are you sure you want to clear the tee sheet?')"
+            >
+                Clear Tee Sheet
+            </button>
+        </form>
         {% endif %}
 
     </div>
+
+    <!-- Auto Refresh (for cross-device sync) -->
+    <script>
+        setTimeout(() => {
+            window.location.reload();
+        }, 15000);
+    </script>
 
 </body>
 </html>
