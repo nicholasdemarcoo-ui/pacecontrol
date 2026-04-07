@@ -1,0 +1,149 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Archived Tee Sheet</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background: #f7f7f7;
+            margin: 0;
+            padding: 30px;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 16px;
+            padding: 24px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.08);
+        }
+
+        h1 {
+            margin-bottom: 8px;
+        }
+
+        .subtitle {
+            color: #666;
+            margin-bottom: 20px;
+        }
+
+        .summary-box {
+            display: flex;
+            gap: 40px;
+            background: #f8f9fb;
+            border: 1px solid #e2e6ea;
+            border-radius: 12px;
+            padding: 16px;
+            margin-bottom: 24px;
+        }
+
+        .summary-col {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        table {
+            width: 100%;
+            min-width: 1200px;
+            border-collapse: collapse;
+        }
+
+        .table-wrap {
+            overflow-x: auto;
+        }
+
+        th, td {
+            border: 1px solid #ddd;
+            padding: 10px;
+            text-align: left;
+        }
+
+        th {
+            background: #0b57d0;
+            color: white;
+        }
+
+        .top-links {
+            margin-bottom: 20px;
+        }
+
+        .top-links a {
+            display: inline-block;
+            margin-right: 12px;
+            padding: 8px 12px;
+            border-radius: 8px;
+            background: #0b57d0;
+            color: white;
+            text-decoration: none;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="top-links">
+            <a href="/">Home</a>
+            <a href="/archive">Archive</a>
+            <a href="/tee-sheet">Live Tee Sheet</a>
+        </div>
+
+        <h1>Archived Tee Sheet</h1>
+        <div class="subtitle">{{ tee_sheet_date }}{% if source_filename %} · {{ source_filename }}{% endif %}</div>
+
+        <div class="summary-box">
+            <div class="summary-col">
+                <div><strong>Groups:</strong> {{ summary.groups }}</div>
+                <div><strong>Fastest Round:</strong> {{ summary.fastest }}</div>
+                <div><strong>Slowest Round:</strong> {{ summary.slowest }}</div>
+                <div><strong>Average Pace:</strong> {{ summary.average }}</div>
+            </div>
+
+            <div class="summary-col">
+                <div><strong>Cart Average:</strong> {{ summary.cart_avg }}</div>
+                <div><strong>Walk Average:</strong> {{ summary.walker_avg }}</div>
+                <div><strong>Mixed Average:</strong> {{ summary.mixed_avg }}</div>
+            </div>
+        </div>
+
+        <div class="table-wrap">
+            <table>
+                <thead>
+                    <tr>
+                        <th>Time</th>
+                        <th>Group Name</th>
+                        <th>Players</th>
+                        <th># of Players</th>
+                        <th>Walkers</th>
+                        <th>Riders</th>
+                        <th>Front</th>
+                        <th>Back</th>
+                        <th>Rotation</th>
+                        <th>Total Time</th>
+                        <th>Average/Hole</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for row in rows %}
+                    <tr>
+                        <td>{{ row.reservation_time }}</td>
+                        <td>{{ row.group_name }}</td>
+                        <td>{{ row.players }}</td>
+                        <td>{{ row.num_players }}</td>
+                        <td>{{ row.walkers }}</td>
+                        <td>{{ row.riders }}</td>
+                        <td>{{ row.front }}</td>
+                        <td>{{ row.back }}</td>
+                        <td>{{ row.rotation }}</td>
+                        <td>{{ row.total_time }}</td>
+                        <td>{{ row.average_hole }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</body>
+</html>

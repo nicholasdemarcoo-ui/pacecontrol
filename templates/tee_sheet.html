@@ -510,6 +510,9 @@
                         <form class="add-form" action="/add-reservation" method="POST">
                             <button class="btn btn-add" type="submit">Add Reservation</button>
                         </form>
+                        <form class="add-form" action="/archive-day" method="POST">
+                        <button class="btn btn-delete" type="submit" onclick="return confirm('Archive today’s tee sheet?')">Archive Day</button>
+                        </form>
 
                         <button class="btn btn-print" type="button" onclick="window.print()">Print</button>
                     </div>

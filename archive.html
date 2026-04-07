@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Archived Tee Sheets</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background: #f7f7f7;
+            margin: 0;
+            padding: 30px;
+        }
+
+        .container {
+            max-width: 1000px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 16px;
+            padding: 24px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.08);
+        }
+
+        h1 {
+            margin-top: 0;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 20px;
+        }
+
+        th, td {
+            border: 1px solid #ddd;
+            padding: 12px;
+            text-align: left;
+        }
+
+        th {
+            background: #0b57d0;
+            color: white;
+        }
+
+        a.button {
+            display: inline-block;
+            padding: 8px 12px;
+            border-radius: 8px;
+            background: #0b57d0;
+            color: white;
+            text-decoration: none;
+        }
+
+        .top-links {
+            margin-bottom: 20px;
+        }
+
+        .top-links a {
+            margin-right: 12px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="top-links">
+            <a class="button" href="/">Home</a>
+            <a class="button" href="/tee-sheet">Live Tee Sheet</a>
+        </div>
+
+        <h1>Archived Tee Sheets</h1>
+
+        {% if sheets %}
+        <table>
+            <thead>
+                <tr>
+                    <th>Date</th>
+                    <th>Source File</th>
+                    <th>View</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for sheet in sheets %}
+                <tr>
+                    <td>{{ sheet.date }}</td>
+                    <td>{{ sheet.source_filename }}</td>
+                    <td><a class="button" href="/archive/{{ sheet.id }}">Open</a></td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+        {% else %}
+        <p>No archived tee sheets yet.</p>
+        {% endif %}
+    </div>
+</body>
+</html>
