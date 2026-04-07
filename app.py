@@ -39,7 +39,7 @@ def log_upload(filename):
         return f"DB error: {e}"
 
 
-# ---------------- DATA STORAGE (AZURE SQL) ----------------
+# ---------------- LIVE SHEET STORAGE ----------------
 
 def row_to_dict(row):
     return {
@@ -188,29 +188,6 @@ def create_new_sheet(sheet_date, source_filename, rows):
     return tee_sheet_id
 
 
-def resequence_rows(sheet_id):
-    rows = get_sheet_rows(sheet_id)
-
-    with get_connection() as conn:
-        cursor = conn.cursor()
-
-        for idx, row in enumerate(rows):
-            cursor.execute("""
-                UPDATE dbo.tee_sheet_rows
-                SET display_order = ?,
-                    updated_at = GETDATE()
-                WHERE id = ?
-            """, (idx, row["id"]))
-
-        cursor.execute("""
-            UPDATE dbo.tee_sheets
-            SET updated_at = GETDATE()
-            WHERE id = ?
-        """, (sheet_id,))
-
-        conn.commit()
-
-
 def add_row_to_active_sheet(row_data):
     data = load_data()
     sheet_id = data["sheet_id"]
@@ -273,112 +250,6 @@ def add_row_to_active_sheet(row_data):
     return True
 
 
-def update_row_by_id(sheet_id, row_id, row):
-    with get_connection() as conn:
-        cursor = conn.cursor()
-
-        cursor.execute("""
-            UPDATE dbo.tee_sheet_rows
-            SET reservation_time = ?,
-                group_name = ?,
-                players = ?,
-                num_players = ?,
-                walkers = ?,
-                riders = ?,
-                group_type = ?,
-                front_course = ?,
-                back_course = ?,
-                rotation = ?,
-                total_time = ?,
-                average_hole = ?,
-                updated_at = GETDATE()
-            WHERE id = ? AND tee_sheet_id = ?
-        """, (
-            row.get("reservation_time") or "",
-            row.get("group_name") or "",
-            row.get("players") or "",
-            int(row["num_players"]) if str(row.get("num_players", "")).isdigit() else None,
-            int(row["walkers"]) if str(row.get("walkers", "")).isdigit() else None,
-            int(row["riders"]) if str(row.get("riders", "")).isdigit() else None,
-            row.get("group_type") or "",
-            row.get("front") or "",
-            row.get("back") or "",
-            row.get("rotation") or "",
-            row.get("total_time") or "",
-            row.get("average_hole") or "",
-            row_id,
-            sheet_id
-        ))
-
-        cursor.execute("""
-            UPDATE dbo.tee_sheets
-            SET updated_at = GETDATE()
-            WHERE id = ?
-        """, (sheet_id,))
-
-        conn.commit()
-
-
-def delete_row_by_id(sheet_id, row_id):
-    with get_connection() as conn:
-        cursor = conn.cursor()
-
-        cursor.execute("""
-            DELETE FROM dbo.tee_sheet_rows
-            WHERE id = ? AND tee_sheet_id = ?
-        """, (row_id, sheet_id))
-
-        cursor.execute("""
-            UPDATE dbo.tee_sheets
-            SET updated_at = GETDATE()
-            WHERE id = ?
-        """, (sheet_id,))
-
-        conn.commit()
-
-    resequence_rows(sheet_id)
-
-
-def clear_active_sheet():
-    sheet = get_active_sheet()
-    if not sheet:
-        return
-
-    sheet_id = sheet["id"]
-
-    with get_connection() as conn:
-        cursor = conn.cursor()
-
-        cursor.execute("DELETE FROM dbo.tee_sheet_rows WHERE tee_sheet_id = ?", (sheet_id,))
-        cursor.execute("""
-            UPDATE dbo.tee_sheets
-            SET is_active = 0,
-                updated_at = GETDATE()
-            WHERE id = ?
-        """, (sheet_id,))
-
-        conn.commit()
-
-
-# ---------------- HELPERS ----------------
-
-def sort_rows_by_time(rows):
-    def parse_time(row):
-        value = (row.get("reservation_time") or "").strip()
-        if not value:
-            return datetime.max
-
-        for fmt in ("%I:%M %p", "%H:%M", "%I:%M"):
-            try:
-                return datetime.strptime(value, fmt)
-            except ValueError:
-                continue
-
-        return datetime.max
-
-    rows.sort(key=parse_time)
-
-
 def save_sorted_rows(sheet_id, rows):
     with get_connection() as conn:
         cursor = conn.cursor()
@@ -426,6 +297,88 @@ def save_sorted_rows(sheet_id, rows):
         """, (sheet_id,))
 
         conn.commit()
+
+
+def delete_row_by_id(sheet_id, row_id):
+    with get_connection() as conn:
+        cursor = conn.cursor()
+
+        cursor.execute("""
+            DELETE FROM dbo.tee_sheet_rows
+            WHERE id = ? AND tee_sheet_id = ?
+        """, (row_id, sheet_id))
+
+        cursor.execute("""
+            UPDATE dbo.tee_sheets
+            SET updated_at = GETDATE()
+            WHERE id = ?
+        """, (sheet_id,))
+
+        conn.commit()
+
+
+def clear_active_sheet():
+    sheet = get_active_sheet()
+    if not sheet:
+        return
+
+    sheet_id = sheet["id"]
+
+    with get_connection() as conn:
+        cursor = conn.cursor()
+
+        cursor.execute("DELETE FROM dbo.tee_sheet_rows WHERE tee_sheet_id = ?", (sheet_id,))
+        cursor.execute("""
+            UPDATE dbo.tee_sheets
+            SET is_active = 0,
+                updated_at = GETDATE()
+            WHERE id = ?
+        """, (sheet_id,))
+
+        conn.commit()
+
+
+# ---------------- API ROUTES ----------------
+
+@app.route("/api/status")
+def api_status():
+    data = load_data()
+    return jsonify({
+        "has_sheet": len(data["rows"]) > 0
+    })
+
+
+@app.route("/api/version")
+def api_version():
+    sheet = get_active_sheet()
+    if not sheet or not sheet["updated_at"]:
+        return jsonify({"version": 0})
+
+    try:
+        version = sheet["updated_at"].timestamp()
+    except Exception:
+        version = 0
+
+    return jsonify({"version": version})
+
+
+# ---------------- HELPERS ----------------
+
+def sort_rows_by_time(rows):
+    def parse_time(row):
+        value = (row.get("reservation_time") or "").strip()
+        if not value:
+            return datetime.max
+
+        for fmt in ("%I:%M %p", "%H:%M", "%I:%M"):
+            try:
+                return datetime.strptime(value, fmt)
+            except ValueError:
+                continue
+
+        return datetime.max
+
+    rows.sort(key=parse_time)
 
 
 def player_count_options(num):
@@ -559,10 +512,7 @@ def calculate_summary(rows):
         "East-West": [],
         "East-South": [],
         "West-East": [],
-        "West-South": [],
-        "South": [],
-        "West": [],
-        "East": []
+        "West-South": []
     }
 
     fastest_name = ""
@@ -784,8 +734,8 @@ def upload():
 @app.route("/tee-sheet")
 def tee_sheet():
     data = load_data()
-
     rows = data["rows"]
+
     for row in rows:
         apply_derived_fields(row)
 

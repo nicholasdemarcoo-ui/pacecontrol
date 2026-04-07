@@ -88,11 +88,6 @@
             color: white;
         }
 
-        .btn-archive {
-            background: #6a1b9a;
-            color: white;
-        }
-
         .btn-disabled {
             opacity: 0.5;
             cursor: not-allowed;
@@ -148,12 +143,6 @@
                 </div>
             {% endif %}
         </div>
-
-        <a href="/archive" style="text-decoration: none;">
-            <button class="btn btn-archive" type="button">
-                View Archived Tee Sheets
-            </button>
-        </a>
 
         {% if has_sheet %}
         <form action="/clear-tee-sheet" method="POST">
