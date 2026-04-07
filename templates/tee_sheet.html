@@ -59,7 +59,10 @@
             height: 100vh;
             display: flex;
             flex-direction: column;
-            padding: 10px 20px 20px 20px;
+            padding: 8px 30px 20px 30px;
+            width: 100%;
+            max-width: none;
+            margin: 0 auto;
             box-sizing: border-box;
         }
 
@@ -147,30 +150,30 @@
 
         .table-shell {
             background: white;
-            margin-top: 12px;
-            padding: 16px;
+            margin-top: 18px;
+            padding: 20px;
             border-radius: 12px;
             box-shadow: 0 2px 10px rgba(0, 0, 0, 0.08);
-
             flex: 1;
             display: flex;
             flex-direction: column;
             overflow: hidden;
+            min-height: 0;
         }
 
         .header-table-wrap {
-            overflow-x: auto;
-            overflow-y: hidden;
-            position: sticky;
-            top: 120px; /* adjust based on nav + title height */
-            z-index: 40;
+            overflow: hidden;
             border-radius: 8px 8px 0 0;
+            flex-shrink: 0;
         }
 
         .body-table-wrap {
             overflow-x: auto;
             overflow-y: auto;
             flex: 1;
+            min-height: 0;
+            border-top: 0;
+            border-radius: 0 0 8px 8px;
         }
 
         .empty-state {
