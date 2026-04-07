@@ -88,34 +88,6 @@ def get_active_sheet():
     }
 
 
-def get_sheet_by_id(sheet_id):
-    with get_connection() as conn:
-        cursor = conn.cursor()
-        cursor.execute("""
-            SELECT id, sheet_date, source_filename, is_active, updated_at
-            FROM dbo.tee_sheets
-            WHERE id = ?
-        """, (sheet_id,))
-        row = cursor.fetchone()
-
-    if not row:
-        return None
-
-    sheet_date = row[1]
-    try:
-        formatted_date = sheet_date.strftime("%B %d, %Y") if sheet_date else ""
-    except AttributeError:
-        formatted_date = str(sheet_date) if sheet_date else ""
-
-    return {
-        "id": row[0],
-        "date": formatted_date,
-        "source_filename": row[2] or "",
-        "is_active": bool(row[3]),
-        "updated_at": row[4]
-    }
-
-
 def get_sheet_rows(sheet_id):
     with get_connection() as conn:
         cursor = conn.cursor()
@@ -301,45 +273,42 @@ def add_row_to_active_sheet(row_data):
     return True
 
 
-def save_sorted_rows(sheet_id, rows):
+def update_row_by_id(sheet_id, row_id, row):
     with get_connection() as conn:
         cursor = conn.cursor()
 
-        for idx, row in enumerate(rows):
-            cursor.execute("""
-                UPDATE dbo.tee_sheet_rows
-                SET display_order = ?,
-                    reservation_time = ?,
-                    group_name = ?,
-                    players = ?,
-                    num_players = ?,
-                    walkers = ?,
-                    riders = ?,
-                    group_type = ?,
-                    front_course = ?,
-                    back_course = ?,
-                    rotation = ?,
-                    total_time = ?,
-                    average_hole = ?,
-                    updated_at = GETDATE()
-                WHERE id = ? AND tee_sheet_id = ?
-            """, (
-                idx,
-                row.get("reservation_time") or "",
-                row.get("group_name") or "",
-                row.get("players") or "",
-                int(row["num_players"]) if str(row.get("num_players", "")).isdigit() else None,
-                int(row["walkers"]) if str(row.get("walkers", "")).isdigit() else None,
-                int(row["riders"]) if str(row.get("riders", "")).isdigit() else None,
-                row.get("group_type") or "",
-                row.get("front") or "",
-                row.get("back") or "",
-                row.get("rotation") or "",
-                row.get("total_time") or "",
-                row.get("average_hole") or "",
-                row["id"],
-                sheet_id
-            ))
+        cursor.execute("""
+            UPDATE dbo.tee_sheet_rows
+            SET reservation_time = ?,
+                group_name = ?,
+                players = ?,
+                num_players = ?,
+                walkers = ?,
+                riders = ?,
+                group_type = ?,
+                front_course = ?,
+                back_course = ?,
+                rotation = ?,
+                total_time = ?,
+                average_hole = ?,
+                updated_at = GETDATE()
+            WHERE id = ? AND tee_sheet_id = ?
+        """, (
+            row.get("reservation_time") or "",
+            row.get("group_name") or "",
+            row.get("players") or "",
+            int(row["num_players"]) if str(row.get("num_players", "")).isdigit() else None,
+            int(row["walkers"]) if str(row.get("walkers", "")).isdigit() else None,
+            int(row["riders"]) if str(row.get("riders", "")).isdigit() else None,
+            row.get("group_type") or "",
+            row.get("front") or "",
+            row.get("back") or "",
+            row.get("rotation") or "",
+            row.get("total_time") or "",
+            row.get("average_hole") or "",
+            row_id,
+            sheet_id
+        ))
 
         cursor.execute("""
             UPDATE dbo.tee_sheets
@@ -391,53 +360,6 @@ def clear_active_sheet():
         conn.commit()
 
 
-def archive_active_sheet():
-    sheet = get_active_sheet()
-    if not sheet:
-        return False
-
-    with get_connection() as conn:
-        cursor = conn.cursor()
-        cursor.execute("""
-            UPDATE dbo.tee_sheets
-            SET is_active = 0,
-                updated_at = GETDATE()
-            WHERE id = ?
-        """, (sheet["id"],))
-        conn.commit()
-
-    return True
-
-
-def get_archived_sheets():
-    with get_connection() as conn:
-        cursor = conn.cursor()
-        cursor.execute("""
-            SELECT id, sheet_date, source_filename, updated_at
-            FROM dbo.tee_sheets
-            WHERE is_active = 0
-            ORDER BY sheet_date DESC, id DESC
-        """)
-        rows = cursor.fetchall()
-
-    archived = []
-    for row in rows:
-        sheet_date = row[1]
-        try:
-            formatted_date = sheet_date.strftime("%B %d, %Y") if sheet_date else ""
-        except AttributeError:
-            formatted_date = str(sheet_date) if sheet_date else ""
-
-        archived.append({
-            "id": row[0],
-            "date": formatted_date,
-            "source_filename": row[2] or "",
-            "updated_at": row[3]
-        })
-
-    return archived
-
-
 # ---------------- HELPERS ----------------
 
 def sort_rows_by_time(rows):
@@ -455,6 +377,55 @@ def sort_rows_by_time(rows):
         return datetime.max
 
     rows.sort(key=parse_time)
+
+
+def save_sorted_rows(sheet_id, rows):
+    with get_connection() as conn:
+        cursor = conn.cursor()
+
+        for idx, row in enumerate(rows):
+            cursor.execute("""
+                UPDATE dbo.tee_sheet_rows
+                SET display_order = ?,
+                    reservation_time = ?,
+                    group_name = ?,
+                    players = ?,
+                    num_players = ?,
+                    walkers = ?,
+                    riders = ?,
+                    group_type = ?,
+                    front_course = ?,
+                    back_course = ?,
+                    rotation = ?,
+                    total_time = ?,
+                    average_hole = ?,
+                    updated_at = GETDATE()
+                WHERE id = ? AND tee_sheet_id = ?
+            """, (
+                idx,
+                row.get("reservation_time") or "",
+                row.get("group_name") or "",
+                row.get("players") or "",
+                int(row["num_players"]) if str(row.get("num_players", "")).isdigit() else None,
+                int(row["walkers"]) if str(row.get("walkers", "")).isdigit() else None,
+                int(row["riders"]) if str(row.get("riders", "")).isdigit() else None,
+                row.get("group_type") or "",
+                row.get("front") or "",
+                row.get("back") or "",
+                row.get("rotation") or "",
+                row.get("total_time") or "",
+                row.get("average_hole") or "",
+                row["id"],
+                sheet_id
+            ))
+
+        cursor.execute("""
+            UPDATE dbo.tee_sheets
+            SET updated_at = GETDATE()
+            WHERE id = ?
+        """, (sheet_id,))
+
+        conn.commit()
 
 
 def player_count_options(num):
@@ -788,40 +759,26 @@ def home():
 
 @app.route("/upload", methods=["POST"])
 def upload():
-    try:
-        if "tee_sheet_pdf" not in request.files:
-            return "step 1 failed: tee_sheet_pdf not found"
+    if "tee_sheet_pdf" not in request.files:
+        return redirect("/")
 
-        file = request.files["tee_sheet_pdf"]
+    file = request.files["tee_sheet_pdf"]
 
-        if file.filename == "":
-            return "step 2 failed: empty filename"
+    if file.filename == "":
+        return redirect("/")
 
-        temp_path = "temp.pdf"
-        file.save(temp_path)
+    temp_path = "temp.pdf"
+    file.save(temp_path)
 
-        if not os.path.exists(temp_path):
-            return "step 3 failed: temp file not saved"
+    rows = extract_pdf_text(temp_path)
 
-        rows = extract_pdf_text(temp_path)
+    create_new_sheet(datetime.now().date(), file.filename, rows)
+    log_upload(file.filename)
 
-        if rows is None:
-            return "step 4 failed: extract_pdf_text returned None"
+    if os.path.exists(temp_path):
+        os.remove(temp_path)
 
-        if not isinstance(rows, list):
-            return f"step 4 failed: extract_pdf_text returned {type(rows)}"
-
-        create_new_sheet(datetime.now().date(), file.filename, rows)
-
-        log_upload(file.filename)
-
-        if os.path.exists(temp_path):
-            os.remove(temp_path)
-
-        return redirect("/tee-sheet")
-
-    except Exception as e:
-        return f"upload error: {e}"
+    return redirect("/tee-sheet")
 
 
 @app.route("/tee-sheet")
@@ -917,37 +874,6 @@ def delete(index):
 def clear():
     clear_active_sheet()
     return redirect("/")
-
-
-@app.route("/archive-day", methods=["POST"])
-def archive_day():
-    archive_active_sheet()
-    return redirect("/")
-
-
-@app.route("/archive")
-def archive():
-    sheets = get_archived_sheets()
-    return render_template("archive.html", sheets=sheets)
-
-
-@app.route("/archive/<int:sheet_id>")
-def archive_sheet(sheet_id):
-    sheet = get_sheet_by_id(sheet_id)
-    if not sheet:
-        return redirect("/archive")
-
-    rows = get_sheet_rows(sheet_id)
-    for row in rows:
-        apply_derived_fields(row)
-
-    return render_template(
-        "archive_sheet.html",
-        rows=rows,
-        tee_sheet_date=sheet["date"],
-        source_filename=sheet["source_filename"],
-        summary=calculate_summary(rows)
-    )
 
 
 # ---------------- RUN ----------------
