@@ -5,6 +5,11 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Tee Sheet</title>
     <style>
+        html, body {
+            height: 100%;
+            overflow: hidden;
+        }
+
         body {
             font-family: Arial, sans-serif;
             margin: 0;
@@ -51,10 +56,10 @@
         }
 
         .page-shell {
-            padding: 20px 30px 30px 30px;
-            width: 100%;
-            max-width: none;
-            margin: 0 auto;
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+            padding: 10px 20px 20px 20px;
             box-sizing: border-box;
         }
 
@@ -142,10 +147,15 @@
 
         .table-shell {
             background: white;
-            margin-top: 18px;
-            padding: 20px;
+            margin-top: 12px;
+            padding: 16px;
             border-radius: 12px;
             box-shadow: 0 2px 10px rgba(0, 0, 0, 0.08);
+
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
         }
 
         .header-table-wrap {
@@ -160,9 +170,7 @@
         .body-table-wrap {
             overflow-x: auto;
             overflow-y: auto;
-            max-height: calc(100vh - 320px);
-            border-top: 0;
-            border-radius: 0 0 8px 8px;
+            flex: 1;
         }
 
         .empty-state {
