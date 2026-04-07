@@ -19,22 +19,26 @@
 
         .nav-bar {
             position: sticky;
-            top: 0;                /* 👈 change from 10px to 0 */
-            width: 100%;           /* 👈 ADD THIS */
+            top: 0;
+            width: 100%;
             z-index: 100;
             background: #0b57d0;
             box-shadow: 0 2px 10px rgba(0, 0, 0, 0.12);
-        }
+        }  
 
         .nav-inner {
             width: 100%;
-            max-width: 1600px;     /* 👈 bring this BACK */
-            margin: 0 auto;        /* 👈 center container */
+            max-width: 1600px;
+            margin: 0 auto;
             padding: 14px 20px;
             display: flex;
             align-items: center;
-            justify-content: space-between;
-            box-sizing: border-box;
+        }
+
+        .nav-left {
+            display: flex;
+            align-items: center;
+            gap: 14px;
         }
 
         .nav-title {
@@ -55,41 +59,6 @@
 
         .nav-link:hover {
             background: rgba(255, 255, 255, 0.24);
-        }
-
-        .nav-left {
-            display: flex;
-            align-items: center;
-            gap: 14px;
-        }
-
-        .nav-right {
-            display: flex;
-            align-items: center;
-        }
-
-        .nav-profile {
-            display: flex;
-            align-items: center;
-            gap: 10px;
-            cursor: pointer;
-        }
-
-        .nav-user {
-            color: white;
-            font-size: 14px;
-        }
-
-        .nav-avatar {
-            width: 34px;
-            height: 34px;
-            border-radius: 50%;
-            background: rgba(255,255,255,0.2);
-            color: white;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-weight: bold;
         }
 
         .page-shell {
