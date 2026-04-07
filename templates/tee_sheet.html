@@ -63,6 +63,15 @@
             box-sizing: border-box;
         }
 
+        .body-table-wrap::after {
+            content: "";
+            position: sticky;
+            bottom: 0;
+            height: 20px;
+            background: linear-gradient(to bottom, transparent, white);
+            display: block;
+        }
+
         .sticky-header {
             position: sticky;
             top: 58px;
