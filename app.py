@@ -1,10 +1,10 @@
 import os
 import re
+import sqlite3
 from datetime import datetime
 from pathlib import Path
 
 import fitz
-from dotenv import load_dotenv
 from flask import (
     Flask,
     flash,
@@ -14,16 +14,14 @@ from flask import (
     send_from_directory,
     url_for,
 )
-from mssql_python import connect
 from reportlab.lib.pagesizes import letter
 from reportlab.pdfgen import canvas
 
-load_dotenv()
-
 app = Flask(__name__)
-app.secret_key = os.getenv("FLASK_SECRET_KEY", "dev-secret-key")
+app.secret_key = "dev-secret-key"
 
 BASE_DIR = Path(__file__).resolve().parent
+DATABASE = BASE_DIR / "tee_sheet.db"
 PDF_FOLDER = BASE_DIR / "static" / "archived_pdfs"
 PDF_FOLDER.mkdir(parents=True, exist_ok=True)
 
@@ -31,52 +29,88 @@ PDF_FOLDER.mkdir(parents=True, exist_ok=True)
 # ---------------- DATABASE ----------------
 
 def get_connection():
-    return connect(os.getenv("SQL_CONNECTION_STRING"))
+    conn = sqlite3.connect(DATABASE)
+    conn.row_factory = sqlite3.Row
+    return conn
 
 
-def ensure_archive_tables():
+def init_db():
     with get_connection() as conn:
         cursor = conn.cursor()
 
         cursor.execute("""
-            IF OBJECT_ID('dbo.archived_days', 'U') IS NULL
-            BEGIN
-                CREATE TABLE dbo.archived_days (
-                    id INT IDENTITY(1,1) PRIMARY KEY,
-                    original_sheet_id INT NULL,
-                    play_date DATE NULL,
-                    title NVARCHAR(255) NULL,
-                    summary_pdf NVARCHAR(500) NULL,
-                    source_filename NVARCHAR(255) NULL,
-                    created_at DATETIME2 NOT NULL DEFAULT GETDATE()
-                )
-            END
+            CREATE TABLE IF NOT EXISTS upload_logs (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                filename TEXT,
+                uploaded_at TEXT DEFAULT CURRENT_TIMESTAMP
+            )
         """)
 
         cursor.execute("""
-            IF OBJECT_ID('dbo.archived_tee_sheet_rows', 'U') IS NULL
-            BEGIN
-                CREATE TABLE dbo.archived_tee_sheet_rows (
-                    id INT IDENTITY(1,1) PRIMARY KEY,
-                    archived_day_id INT NOT NULL,
-                    reservation_time NVARCHAR(50) NULL,
-                    group_name NVARCHAR(255) NULL,
-                    players NVARCHAR(MAX) NULL,
-                    num_players INT NULL,
-                    walkers INT NULL,
-                    riders INT NULL,
-                    group_type NVARCHAR(50) NULL,
-                    front_course NVARCHAR(50) NULL,
-                    back_course NVARCHAR(50) NULL,
-                    rotation NVARCHAR(50) NULL,
-                    total_time NVARCHAR(50) NULL,
-                    average_hole NVARCHAR(50) NULL,
-                    display_order INT NOT NULL DEFAULT 0,
-                    created_at DATETIME2 NOT NULL DEFAULT GETDATE(),
-                    CONSTRAINT FK_archived_tee_sheet_rows_archived_days
-                        FOREIGN KEY (archived_day_id) REFERENCES dbo.archived_days(id)
-                )
-            END
+            CREATE TABLE IF NOT EXISTS tee_sheets (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                sheet_date TEXT,
+                source_filename TEXT,
+                is_active INTEGER DEFAULT 1,
+                created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+                updated_at TEXT DEFAULT CURRENT_TIMESTAMP
+            )
+        """)
+
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS tee_sheet_rows (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                tee_sheet_id INTEGER NOT NULL,
+                reservation_time TEXT,
+                group_name TEXT,
+                players TEXT,
+                num_players INTEGER,
+                walkers INTEGER,
+                riders INTEGER,
+                group_type TEXT,
+                front_course TEXT,
+                back_course TEXT,
+                rotation TEXT,
+                total_time TEXT,
+                average_hole TEXT,
+                display_order INTEGER DEFAULT 0,
+                updated_at TEXT DEFAULT CURRENT_TIMESTAMP,
+                FOREIGN KEY (tee_sheet_id) REFERENCES tee_sheets(id)
+            )
+        """)
+
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS archived_days (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                original_sheet_id INTEGER,
+                play_date TEXT,
+                title TEXT,
+                summary_pdf TEXT,
+                source_filename TEXT,
+                created_at TEXT DEFAULT CURRENT_TIMESTAMP
+            )
+        """)
+
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS archived_tee_sheet_rows (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                archived_day_id INTEGER NOT NULL,
+                reservation_time TEXT,
+                group_name TEXT,
+                players TEXT,
+                num_players INTEGER,
+                walkers INTEGER,
+                riders INTEGER,
+                group_type TEXT,
+                front_course TEXT,
+                back_course TEXT,
+                rotation TEXT,
+                total_time TEXT,
+                average_hole TEXT,
+                display_order INTEGER DEFAULT 0,
+                created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+                FOREIGN KEY (archived_day_id) REFERENCES archived_days(id)
+            )
         """)
 
         conn.commit()
@@ -86,53 +120,46 @@ def log_upload(filename):
     try:
         with get_connection() as conn:
             cursor = conn.cursor()
-            cursor.execute("""
-                IF NOT EXISTS (
-                    SELECT * FROM sysobjects WHERE name='upload_logs' AND xtype='U'
-                )
-                CREATE TABLE upload_logs (
-                    id INT IDENTITY(1,1) PRIMARY KEY,
-                    filename NVARCHAR(255),
-                    uploaded_at DATETIME2 DEFAULT GETDATE()
-                )
-            """)
-            cursor.execute("INSERT INTO upload_logs (filename) VALUES (?)", (filename,))
+            cursor.execute(
+                "INSERT INTO upload_logs (filename) VALUES (?)",
+                (filename,)
+            )
             conn.commit()
         return "Saved to database"
     except Exception as e:
         return f"DB error: {e}"
 
 
-# ---------------- DATA STORAGE (AZURE SQL) ----------------
+# ---------------- DATA STORAGE ----------------
 
 def row_to_dict(row):
     return {
-        "id": row[0],
-        "reservation_time": row[1] or "",
-        "group_name": row[2] or "",
-        "players": row[3] or "",
-        "num_players": str(row[4]) if row[4] is not None else "",
-        "walkers": str(row[5]) if row[5] is not None else "",
-        "riders": str(row[6]) if row[6] is not None else "",
-        "group_type": row[7] or "",
-        "front": row[8] or "",
-        "back": row[9] or "",
-        "rotation": row[10] or "",
-        "total_time": row[11] or "",
-        "average_hole": row[12] or "",
-        "display_order": row[13] if row[13] is not None else 0
+        "id": row["id"],
+        "reservation_time": row["reservation_time"] or "",
+        "group_name": row["group_name"] or "",
+        "players": row["players"] or "",
+        "num_players": str(row["num_players"]) if row["num_players"] is not None else "",
+        "walkers": str(row["walkers"]) if row["walkers"] is not None else "",
+        "riders": str(row["riders"]) if row["riders"] is not None else "",
+        "group_type": row["group_type"] or "",
+        "front": row["front_course"] or "",
+        "back": row["back_course"] or "",
+        "rotation": row["rotation"] or "",
+        "total_time": row["total_time"] or "",
+        "average_hole": row["average_hole"] or "",
+        "display_order": row["display_order"] if row["display_order"] is not None else 0
     }
 
 
 def archive_day_row_to_dict(row):
     return {
-        "id": row[0],
-        "original_sheet_id": row[1],
-        "play_date": row[2],
-        "title": row[3] or "",
-        "summary_pdf": row[4] or "",
-        "source_filename": row[5] or "",
-        "created_at": row[6],
+        "id": row["id"],
+        "original_sheet_id": row["original_sheet_id"],
+        "play_date": row["play_date"],
+        "title": row["title"] or "",
+        "summary_pdf": row["summary_pdf"] or "",
+        "source_filename": row["source_filename"] or "",
+        "created_at": row["created_at"],
     }
 
 
@@ -140,28 +167,32 @@ def get_active_sheet():
     with get_connection() as conn:
         cursor = conn.cursor()
         cursor.execute("""
-            SELECT TOP 1 id, sheet_date, source_filename, updated_at
-            FROM dbo.tee_sheets
+            SELECT id, sheet_date, source_filename, updated_at
+            FROM tee_sheets
             WHERE is_active = 1
             ORDER BY updated_at DESC, id DESC
+            LIMIT 1
         """)
         row = cursor.fetchone()
 
     if not row:
         return None
 
-    sheet_date = row[1]
-    try:
-        formatted_date = sheet_date.strftime("%B %d, %Y") if sheet_date else ""
-    except AttributeError:
-        formatted_date = str(sheet_date) if sheet_date else ""
+    sheet_date = row["sheet_date"] or ""
+    formatted_date = ""
+
+    if sheet_date:
+        try:
+            formatted_date = datetime.strptime(sheet_date, "%Y-%m-%d").strftime("%B %d, %Y")
+        except ValueError:
+            formatted_date = sheet_date
 
     return {
-        "id": row[0],
+        "id": row["id"],
         "date": formatted_date,
         "sheet_date_raw": sheet_date,
-        "source_filename": row[2] or "",
-        "updated_at": row[3]
+        "source_filename": row["source_filename"] or "",
+        "updated_at": row["updated_at"]
     }
 
 
@@ -184,7 +215,7 @@ def get_sheet_rows(sheet_id):
                 total_time,
                 average_hole,
                 display_order
-            FROM dbo.tee_sheet_rows
+            FROM tee_sheet_rows
             WHERE tee_sheet_id = ?
             ORDER BY display_order, id
         """, (sheet_id,))
@@ -210,23 +241,22 @@ def create_new_sheet(sheet_date, source_filename, rows):
         cursor = conn.cursor()
 
         cursor.execute("""
-            UPDATE dbo.tee_sheets
+            UPDATE tee_sheets
             SET is_active = 0,
-                updated_at = GETDATE()
+                updated_at = CURRENT_TIMESTAMP
             WHERE is_active = 1
         """)
 
         cursor.execute("""
-            INSERT INTO dbo.tee_sheets (sheet_date, source_filename, is_active)
-            OUTPUT INSERTED.id
+            INSERT INTO tee_sheets (sheet_date, source_filename, is_active)
             VALUES (?, ?, 1)
         """, (sheet_date, source_filename))
 
-        tee_sheet_id = cursor.fetchone()[0]
+        tee_sheet_id = cursor.lastrowid
 
         for idx, row in enumerate(rows):
             cursor.execute("""
-                INSERT INTO dbo.tee_sheet_rows (
+                INSERT INTO tee_sheet_rows (
                     tee_sheet_id,
                     reservation_time,
                     group_name,
@@ -273,15 +303,15 @@ def resequence_rows(sheet_id):
 
         for idx, row in enumerate(rows):
             cursor.execute("""
-                UPDATE dbo.tee_sheet_rows
+                UPDATE tee_sheet_rows
                 SET display_order = ?,
-                    updated_at = GETDATE()
+                    updated_at = CURRENT_TIMESTAMP
                 WHERE id = ?
             """, (idx, row["id"]))
 
         cursor.execute("""
-            UPDATE dbo.tee_sheets
-            SET updated_at = GETDATE()
+            UPDATE tee_sheets
+            SET updated_at = CURRENT_TIMESTAMP
             WHERE id = ?
         """, (sheet_id,))
 
@@ -299,14 +329,14 @@ def add_row_to_active_sheet(row_data):
         cursor = conn.cursor()
 
         cursor.execute("""
-            UPDATE dbo.tee_sheet_rows
+            UPDATE tee_sheet_rows
             SET display_order = display_order + 1,
-                updated_at = GETDATE()
+                updated_at = CURRENT_TIMESTAMP
             WHERE tee_sheet_id = ?
         """, (sheet_id,))
 
         cursor.execute("""
-            INSERT INTO dbo.tee_sheet_rows (
+            INSERT INTO tee_sheet_rows (
                 tee_sheet_id,
                 reservation_time,
                 group_name,
@@ -340,8 +370,8 @@ def add_row_to_active_sheet(row_data):
         ))
 
         cursor.execute("""
-            UPDATE dbo.tee_sheets
-            SET updated_at = GETDATE()
+            UPDATE tee_sheets
+            SET updated_at = CURRENT_TIMESTAMP
             WHERE id = ?
         """, (sheet_id,))
 
@@ -350,64 +380,18 @@ def add_row_to_active_sheet(row_data):
     return True
 
 
-def update_row_by_id(sheet_id, row_id, row):
-    with get_connection() as conn:
-        cursor = conn.cursor()
-
-        cursor.execute("""
-            UPDATE dbo.tee_sheet_rows
-            SET reservation_time = ?,
-                group_name = ?,
-                players = ?,
-                num_players = ?,
-                walkers = ?,
-                riders = ?,
-                group_type = ?,
-                front_course = ?,
-                back_course = ?,
-                rotation = ?,
-                total_time = ?,
-                average_hole = ?,
-                updated_at = GETDATE()
-            WHERE id = ? AND tee_sheet_id = ?
-        """, (
-            row.get("reservation_time") or "",
-            row.get("group_name") or "",
-            row.get("players") or "",
-            int(row["num_players"]) if str(row.get("num_players", "")).isdigit() else None,
-            int(row["walkers"]) if str(row.get("walkers", "")).isdigit() else None,
-            int(row["riders"]) if str(row.get("riders", "")).isdigit() else None,
-            row.get("group_type") or "",
-            row.get("front") or "",
-            row.get("back") or "",
-            row.get("rotation") or "",
-            row.get("total_time") or "",
-            row.get("average_hole") or "",
-            row_id,
-            sheet_id
-        ))
-
-        cursor.execute("""
-            UPDATE dbo.tee_sheets
-            SET updated_at = GETDATE()
-            WHERE id = ?
-        """, (sheet_id,))
-
-        conn.commit()
-
-
 def delete_row_by_id(sheet_id, row_id):
     with get_connection() as conn:
         cursor = conn.cursor()
 
         cursor.execute("""
-            DELETE FROM dbo.tee_sheet_rows
+            DELETE FROM tee_sheet_rows
             WHERE id = ? AND tee_sheet_id = ?
         """, (row_id, sheet_id))
 
         cursor.execute("""
-            UPDATE dbo.tee_sheets
-            SET updated_at = GETDATE()
+            UPDATE tee_sheets
+            SET updated_at = CURRENT_TIMESTAMP
             WHERE id = ?
         """, (sheet_id,))
 
@@ -426,11 +410,11 @@ def clear_active_sheet():
     with get_connection() as conn:
         cursor = conn.cursor()
 
-        cursor.execute("DELETE FROM dbo.tee_sheet_rows WHERE tee_sheet_id = ?", (sheet_id,))
+        cursor.execute("DELETE FROM tee_sheet_rows WHERE tee_sheet_id = ?", (sheet_id,))
         cursor.execute("""
-            UPDATE dbo.tee_sheets
+            UPDATE tee_sheets
             SET is_active = 0,
-                updated_at = GETDATE()
+                updated_at = CURRENT_TIMESTAMP
             WHERE id = ?
         """, (sheet_id,))
 
@@ -438,8 +422,6 @@ def clear_active_sheet():
 
 
 def get_archived_days():
-    ensure_archive_tables()
-
     with get_connection() as conn:
         cursor = conn.cursor()
         cursor.execute("""
@@ -451,7 +433,7 @@ def get_archived_days():
                 summary_pdf,
                 source_filename,
                 created_at
-            FROM dbo.archived_days
+            FROM archived_days
             ORDER BY play_date DESC, created_at DESC, id DESC
         """)
         rows = cursor.fetchall()
@@ -460,11 +442,14 @@ def get_archived_days():
     for row in rows:
         item = archive_day_row_to_dict(row)
 
-        play_date = item["play_date"]
-        try:
-            item["play_date_formatted"] = play_date.strftime("%B %d, %Y") if play_date else ""
-        except AttributeError:
-            item["play_date_formatted"] = str(play_date) if play_date else ""
+        play_date = item["play_date"] or ""
+        if play_date:
+            try:
+                item["play_date_formatted"] = datetime.strptime(play_date, "%Y-%m-%d").strftime("%B %d, %Y")
+            except ValueError:
+                item["play_date_formatted"] = play_date
+        else:
+            item["play_date_formatted"] = ""
 
         archived_days.append(item)
 
@@ -472,8 +457,6 @@ def get_archived_days():
 
 
 def get_archived_rows(archived_day_id):
-    ensure_archive_tables()
-
     with get_connection() as conn:
         cursor = conn.cursor()
         cursor.execute("""
@@ -492,7 +475,7 @@ def get_archived_rows(archived_day_id):
                 total_time,
                 average_hole,
                 display_order
-            FROM dbo.archived_tee_sheet_rows
+            FROM archived_tee_sheet_rows
             WHERE archived_day_id = ?
             ORDER BY display_order, id
         """, (archived_day_id,))
@@ -559,8 +542,6 @@ def generate_archive_pdf(play_date_label, archived_rows, archive_id):
 
 
 def archive_active_sheet():
-    ensure_archive_tables()
-
     active_sheet = get_active_sheet()
     if not active_sheet:
         return False, "No active tee sheet to archive."
@@ -571,14 +552,12 @@ def archive_active_sheet():
     if not rows:
         return False, "No rows found on the active tee sheet."
 
-    play_date_raw = active_sheet.get("sheet_date_raw")
-    if play_date_raw:
-        try:
-            play_date_label = play_date_raw.strftime("%B %d, %Y")
-        except AttributeError:
-            play_date_label = str(play_date_raw)
-    else:
-        play_date_label = datetime.now().strftime("%B %d, %Y")
+    play_date_raw = active_sheet.get("sheet_date_raw") or datetime.now().strftime("%Y-%m-%d")
+
+    try:
+        play_date_label = datetime.strptime(play_date_raw, "%Y-%m-%d").strftime("%B %d, %Y")
+    except ValueError:
+        play_date_label = play_date_raw
 
     title = f"Tee Sheet Summary - {play_date_label}"
     source_filename = active_sheet.get("source_filename", "")
@@ -587,26 +566,25 @@ def archive_active_sheet():
         cursor = conn.cursor()
 
         cursor.execute("""
-            INSERT INTO dbo.archived_days (
+            INSERT INTO archived_days (
                 original_sheet_id,
                 play_date,
                 title,
                 source_filename
             )
-            OUTPUT INSERTED.id
             VALUES (?, ?, ?, ?)
         """, (
             sheet_id,
-            play_date_raw if play_date_raw else datetime.now().date(),
+            play_date_raw,
             title,
             source_filename
         ))
 
-        archived_day_id = cursor.fetchone()[0]
+        archived_day_id = cursor.lastrowid
 
         for idx, row in enumerate(rows):
             cursor.execute("""
-                INSERT INTO dbo.archived_tee_sheet_rows (
+                INSERT INTO archived_tee_sheet_rows (
                     archived_day_id,
                     reservation_time,
                     group_name,
@@ -649,16 +627,16 @@ def archive_active_sheet():
         cursor = conn.cursor()
 
         cursor.execute("""
-            UPDATE dbo.archived_days
+            UPDATE archived_days
             SET summary_pdf = ?
             WHERE id = ?
         """, (pdf_filename, archived_day_id))
 
-        # Reset the live sheet by marking it inactive
+        cursor.execute("DELETE FROM tee_sheet_rows WHERE tee_sheet_id = ?", (sheet_id,))
         cursor.execute("""
-            UPDATE dbo.tee_sheets
+            UPDATE tee_sheets
             SET is_active = 0,
-                updated_at = GETDATE()
+                updated_at = CURRENT_TIMESTAMP
             WHERE id = ?
         """, (sheet_id,))
 
@@ -692,7 +670,7 @@ def save_sorted_rows(sheet_id, rows):
 
         for idx, row in enumerate(rows):
             cursor.execute("""
-                UPDATE dbo.tee_sheet_rows
+                UPDATE tee_sheet_rows
                 SET display_order = ?,
                     reservation_time = ?,
                     group_name = ?,
@@ -706,7 +684,7 @@ def save_sorted_rows(sheet_id, rows):
                     rotation = ?,
                     total_time = ?,
                     average_hole = ?,
-                    updated_at = GETDATE()
+                    updated_at = CURRENT_TIMESTAMP
                 WHERE id = ? AND tee_sheet_id = ?
             """, (
                 idx,
@@ -727,8 +705,8 @@ def save_sorted_rows(sheet_id, rows):
             ))
 
         cursor.execute("""
-            UPDATE dbo.tee_sheets
-            SET updated_at = GETDATE()
+            UPDATE tee_sheets
+            SET updated_at = CURRENT_TIMESTAMP
             WHERE id = ?
         """, (sheet_id,))
 
@@ -1074,16 +1052,16 @@ def upload():
     if file.filename == "":
         return redirect("/")
 
-    temp_path = "temp.pdf"
+    temp_path = BASE_DIR / "temp.pdf"
     file.save(temp_path)
 
     rows = extract_pdf_text(temp_path)
 
-    create_new_sheet(datetime.now().date(), file.filename, rows)
+    create_new_sheet(datetime.now().strftime("%Y-%m-%d"), file.filename, rows)
     log_upload(file.filename)
 
-    if os.path.exists(temp_path):
-        os.remove(temp_path)
+    if temp_path.exists():
+        temp_path.unlink()
 
     return redirect("/tee-sheet")
 
@@ -1209,5 +1187,5 @@ def archived_pdf(filename):
 # ---------------- RUN ----------------
 
 if __name__ == "__main__":
-    ensure_archive_tables()
+    init_db()
     app.run(debug=True)
