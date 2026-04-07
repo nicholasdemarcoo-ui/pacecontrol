@@ -396,16 +396,72 @@ def format_total_time(value):
     return value
 
 
-def format_reservation_time(value):
+def format_reservation_time(value, existing_value=""):
     value = (value or "").strip()
-    digits = "".join(ch for ch in value if ch.isdigit())
+    if not value:
+        return ""
 
-    if len(digits) == 3:
-        return f"{int(digits[0])}:{digits[1:]}"
-    if len(digits) == 4:
-        hours = str(int(digits[:2]))
-        return f"{hours}:{digits[2:]}"
-    return value
+    normalized = value.upper().replace(".", "").strip()
+    digits = "".join(ch for ch in normalized if ch.isdigit())
+
+    meridiem = ""
+    if "AM" in normalized:
+        meridiem = "AM"
+    elif "PM" in normalized:
+        meridiem = "PM"
+    else:
+        existing_upper = (existing_value or "").upper()
+        if "AM" in existing_upper:
+            meridiem = "AM"
+        elif "PM" in existing_upper:
+            meridiem = "PM"
+
+    hour = None
+    minute = None
+
+    if ":" in value:
+        parts = value.split(":")
+        if len(parts) == 2:
+            try:
+                hour = int(parts[0].strip())
+                minute = int("".join(ch for ch in parts[1] if ch.isdigit()))
+            except ValueError:
+                return value
+    elif len(digits) == 3:
+        hour = int(digits[0])
+        minute = int(digits[1:])
+    elif len(digits) == 4:
+        hour = int(digits[:2])
+        minute = int(digits[2:])
+    else:
+        return value
+
+    if minute < 0 or minute > 59:
+        return value
+
+    if not meridiem:
+        if hour == 12:
+            meridiem = "PM"
+        elif 1 <= hour <= 6:
+            meridiem = "PM"
+        else:
+            meridiem = "AM"
+
+    if hour == 0:
+        hour = 12
+        if not meridiem:
+            meridiem = "AM"
+    elif hour > 12:
+        if hour <= 23:
+            hour -= 12
+            meridiem = "PM"
+        else:
+            return value
+
+    if hour < 1 or hour > 12:
+        return value
+
+    return f"{hour}:{str(minute).zfill(2)} {meridiem}"
 
 
 def apply_derived_fields(row):
@@ -789,8 +845,8 @@ def save(index):
     players_text = (request.form.get("players") or "").strip()
     player_list = [p.strip() for p in players_text.split(",") if p.strip()]
 
-    raw_time = (request.form.get("reservation_time") or "").strip()
-    row["reservation_time"] = format_reservation_time(raw_time)
+    raw_time = request.form.get("reservation_time", "")
+    row["reservation_time"] = format_reservation_time(raw_time, row.get("reservation_time", ""))
     row["players"] = players_text
     row["num_players"] = str(len(player_list))
     row["group_name"] = f"{player_list[0]} Group" if player_list else ""
