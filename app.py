@@ -838,14 +838,14 @@ def save(index):
     sheet_id = data["sheet_id"]
 
     if index < 0 or index >= len(rows) or not sheet_id:
-        return redirect("/tee-sheet")
+        return jsonify({"success": False, "error": "Invalid row"}), 400
 
     row = rows[index]
 
     players_text = (request.form.get("players") or "").strip()
     player_list = [p.strip() for p in players_text.split(",") if p.strip()]
 
-    raw_time = request.form.get("reservation_time", "")
+    raw_time = (request.form.get("reservation_time") or "").strip()
     row["reservation_time"] = format_reservation_time(raw_time, row.get("reservation_time", ""))
     row["players"] = players_text
     row["num_players"] = str(len(player_list))
@@ -860,7 +860,7 @@ def save(index):
     sort_rows_by_time(rows)
     save_sorted_rows(sheet_id, rows)
 
-    return redirect("/tee-sheet")
+    return jsonify({"success": True})
 
 
 @app.route("/delete/<int:index>", methods=["POST"])

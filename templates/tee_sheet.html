@@ -625,7 +625,7 @@
                         {% if edit_id == loop.index0 %}
                         <tr id="row-{{ loop.index0 }}" class="editing-row">
                             <td class="col-actions">
-                                <form action="/save/{{ loop.index0 }}" method="POST">
+                                <form action="/save/{{ loop.index0 }}" method="POST" class="save-row-form" data-row-id="{{ loop.index0 }}">
                                     <div class="actions">
                                         <button class="btn btn-save" type="submit">Save</button>
                                         <a class="btn btn-cancel" href="/tee-sheet#row-{{ loop.index0 }}">Cancel</a>
@@ -902,6 +902,68 @@
             checkForUpdates();
             setInterval(checkForUpdates, 3000);
         }
+        document.querySelectorAll(".save-row-form").forEach(form => {
+        form.addEventListener("submit", async (event) => {
+        event.preventDefault();
+
+        const submitButton = form.querySelector(".btn-save");
+        const currentScrollTop = bodyScroll ? bodyScroll.scrollTop : window.scrollY;
+        const currentScrollLeft = bodyScroll ? bodyScroll.scrollLeft : window.scrollX;
+
+        const timeInput = form.querySelector('input[name="reservation_time"]');
+        if (timeInput) {
+            timeInput.value = formatReservationTimeInput(
+                timeInput.value,
+                timeInput.dataset.originalValue || timeInput.defaultValue || ""
+            );
+        }
+
+        if (submitButton) {
+            submitButton.disabled = true;
+            submitButton.textContent = "Saving...";
+        }
+
+        try {
+            const response = await fetch(form.action, {
+                method: "POST",
+                body: new FormData(form)
+            });
+
+            const data = await response.json();
+
+            if (!data.success) {
+                alert("There was a problem saving the row.");
+                return;
+            }
+
+            sessionStorage.setItem("teeSheetScrollTop", String(currentScrollTop));
+            sessionStorage.setItem("teeSheetScrollLeft", String(currentScrollLeft));
+
+            window.location.reload();
+        } catch (error) {
+            console.error("Save failed:", error);
+            alert("There was a problem saving the row.");
+        } finally {
+            if (submitButton) {
+                submitButton.disabled = false;
+                submitButton.textContent = "Save";
+            }
+        }
+    });
+});
+
+window.addEventListener("load", () => {
+    const savedTop = sessionStorage.getItem("teeSheetScrollTop");
+    const savedLeft = sessionStorage.getItem("teeSheetScrollLeft");
+
+    if (bodyScroll && savedTop !== null) {
+        bodyScroll.scrollTop = parseInt(savedTop, 10) || 0;
+        bodyScroll.scrollLeft = parseInt(savedLeft || "0", 10) || 0;
+    }
+
+    sessionStorage.removeItem("teeSheetScrollTop");
+    sessionStorage.removeItem("teeSheetScrollLeft");
+});
     </script>
 </body>
 </html>
