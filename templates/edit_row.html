@@ -7,9 +7,51 @@
     <style>
         body {
             font-family: Arial, sans-serif;
-            margin: 30px;
+            margin: 0;
             background: #f7f7f7;
             color: #222;
+        }
+
+        .nav-bar {
+            position: sticky;
+            top: 0;
+            z-index: 100;
+            background: #0b57d0;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.12);
+        }
+
+        .nav-inner {
+            max-width: 1100px;
+            margin: 0 auto;
+            padding: 14px 24px;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            flex-wrap: wrap;
+        }
+
+        .nav-title {
+            color: white;
+            font-size: 16px;
+            font-weight: bold;
+            margin-right: 8px;
+        }
+
+        .nav-link {
+            color: white;
+            text-decoration: none;
+            padding: 8px 14px;
+            border-radius: 999px;
+            background: rgba(255,255,255,0.14);
+            font-size: 14px;
+        }
+
+        .nav-link:hover {
+            background: rgba(255,255,255,0.24);
+        }
+
+        .page-wrap {
+            padding: 30px;
         }
 
         .container {
@@ -75,6 +117,15 @@
     </style>
 </head>
 <body>
+    <nav class="nav-bar">
+        <div class="nav-inner">
+            <div class="nav-title">Pace Control</div>
+            <a class="nav-link" href="/">Home</a>
+            <a class="nav-link" href="/tee-sheet">Tee Sheet</a>
+        </div>
+    </nav>
+
+    <div class="page-wrap">
     <div class="container">
         <h1>Edit Reservation</h1>
 
@@ -126,5 +177,7 @@
             </div>
         </form>
     </div>
+    </div>
 </body>
 </html>
+
