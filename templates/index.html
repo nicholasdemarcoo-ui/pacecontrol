@@ -1,218 +1,942 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Course Report</title>
+import os
+import re
+from datetime import datetime
 
-    <style>
-        body {
-            margin: 0;
-            font-family: Arial, sans-serif;
-            background: #f0f2f5;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            min-height: 100vh;
-            padding: 24px;
-            box-sizing: border-box;
-        }
+import fitz
+from dotenv import load_dotenv
+from flask import Flask, redirect, render_template, request, jsonify
+from mssql_python import connect
 
-        .container {
-            background: white;
-            padding: 40px 32px;
-            border-radius: 18px;
-            box-shadow: 0 6px 18px rgba(0,0,0,0.1);
-            text-align: center;
-            width: 100%;
-            max-width: 700px;
-        }
+load_dotenv()
 
-        h1 {
-            margin-bottom: 10px;
-            font-size: 32px;
-        }
+app = Flask(__name__)
 
-        .subtitle {
-            font-size: 14px;
-            color: #777;
-            margin-bottom: 24px;
-        }
 
-        .status-box {
-            text-align: left;
-            background: #f8f9fb;
-            border: 1px solid #e2e6ea;
-            border-radius: 12px;
-            padding: 14px 16px;
-            margin-bottom: 18px;
-            font-size: 14px;
-            color: #333;
-        }
+# ---------------- DATABASE ----------------
 
-        .status-line {
-            margin: 6px 0;
-            word-break: break-word;
-        }
+def get_connection():
+    return connect(os.getenv("SQL_CONNECTION_STRING"))
 
-        input[type="file"] {
-            width: 100%;
-            margin-bottom: 16px;
-        }
 
-        .btn {
-            display: block;
-            width: 100%;
-            height: 50px;
-            border-radius: 12px;
-            font-size: 16px;
-            font-weight: bold;
-            border: none;
-            cursor: pointer;
-            margin-top: 12px;
-        }
+def log_upload(filename):
+    try:
+        with get_connection() as conn:
+            cursor = conn.cursor()
+            cursor.execute("""
+                IF NOT EXISTS (
+                    SELECT * FROM sysobjects WHERE name='upload_logs' AND xtype='U'
+                )
+                CREATE TABLE upload_logs (
+                    id INT IDENTITY(1,1) PRIMARY KEY,
+                    filename NVARCHAR(255),
+                    uploaded_at DATETIME2 DEFAULT GETDATE()
+                )
+            """)
+            cursor.execute("INSERT INTO upload_logs (filename) VALUES (?)", (filename,))
+            conn.commit()
+        return "Saved to database"
+    except Exception as e:
+        return f"DB error: {e}"
 
-        .btn-upload {
-            background: #0b57d0;
-            color: white;
-        }
 
-        .btn-open {
-            background: #2e7d32;
-            color: white;
-        }
+# ---------------- DATA STORAGE (AZURE SQL) ----------------
 
-        .btn-clear {
-            background: #c62828;
-            color: white;
-        }
+def row_to_dict(row):
+    return {
+        "id": row[0],
+        "reservation_time": row[1] or "",
+        "group_name": row[2] or "",
+        "players": row[3] or "",
+        "num_players": str(row[4]) if row[4] is not None else "",
+        "walkers": str(row[5]) if row[5] is not None else "",
+        "riders": str(row[6]) if row[6] is not None else "",
+        "group_type": row[7] or "",
+        "front": row[8] or "",
+        "back": row[9] or "",
+        "rotation": row[10] or "",
+        "total_time": row[11] or "",
+        "average_hole": row[12] or "",
+        "display_order": row[13] if row[13] is not None else 0
+    }
 
-        .btn-disabled {
-            opacity: 0.5;
-            cursor: not-allowed;
-        }
 
-        .divider {
-            margin: 20px 0;
-            font-size: 13px;
-            color: #aaa;
-        }
+def get_active_sheet():
+    with get_connection() as conn:
+        cursor = conn.cursor()
+        cursor.execute("""
+            SELECT TOP 1 id, sheet_date, source_filename, updated_at
+            FROM dbo.tee_sheets
+            WHERE is_active = 1
+            ORDER BY updated_at DESC, id DESC
+        """)
+        row = cursor.fetchone()
 
-        .helper-text {
-            margin-top: 8px;
-            font-size: 12px;
-            color: #888;
-        }
+    if not row:
+        return None
 
-        .text-output {
-            margin-top: 24px;
-            text-align: left;
-            background: #fafafa;
-            border: 1px solid #ddd;
-            border-radius: 12px;
-            padding: 16px;
-            max-height: 300px;
-            overflow-y: auto;
-            white-space: pre-wrap;
-            word-break: break-word;
-            font-size: 13px;
-            line-height: 1.5;
-        }
+    sheet_date = row[1]
+    try:
+        formatted_date = sheet_date.strftime("%B %d, %Y") if sheet_date else ""
+    except AttributeError:
+        formatted_date = str(sheet_date) if sheet_date else ""
 
-        .section-title {
-            margin-top: 24px;
-            margin-bottom: 10px;
-            text-align: left;
-            font-size: 18px;
-        }
-    </style>
-</head>
+    return {
+        "id": row[0],
+        "date": formatted_date,
+        "source_filename": row[2] or "",
+        "updated_at": row[3]
+    }
 
-<body>
 
-    <div class="container">
+def get_sheet_by_id(sheet_id):
+    with get_connection() as conn:
+        cursor = conn.cursor()
+        cursor.execute("""
+            SELECT id, sheet_date, source_filename, is_active, updated_at
+            FROM dbo.tee_sheets
+            WHERE id = ?
+        """, (sheet_id,))
+        row = cursor.fetchone()
 
-        <h1>Tee Sheet & Pace Report</h1>
-        <div class="subtitle">Track Groups and their Pace</div>
+    if not row:
+        return None
 
-        <div class="status-box">
-            <div class="status-line"><strong>Database:</strong> {{ db_status or "Not checked yet" }}</div>
+    sheet_date = row[1]
+    try:
+        formatted_date = sheet_date.strftime("%B %d, %Y") if sheet_date else ""
+    except AttributeError:
+        formatted_date = str(sheet_date) if sheet_date else ""
 
-            {% if upload_status %}
-                <div class="status-line"><strong>Upload:</strong> {{ upload_status }}</div>
-            {% endif %}
+    return {
+        "id": row[0],
+        "date": formatted_date,
+        "source_filename": row[2] or "",
+        "is_active": bool(row[3]),
+        "updated_at": row[4]
+    }
 
-            {% if uploaded_filename %}
-                <div class="status-line"><strong>File:</strong> {{ uploaded_filename }}</div>
-            {% endif %}
-        </div>
 
-        <form action="/upload" method="POST" enctype="multipart/form-data">
-            <input type="file" name="tee_sheet_pdf" accept=".pdf" required>
+def get_sheet_rows(sheet_id):
+    with get_connection() as conn:
+        cursor = conn.cursor()
+        cursor.execute("""
+            SELECT
+                id,
+                reservation_time,
+                group_name,
+                players,
+                num_players,
+                walkers,
+                riders,
+                group_type,
+                front_course,
+                back_course,
+                rotation,
+                total_time,
+                average_hole,
+                display_order
+            FROM dbo.tee_sheet_rows
+            WHERE tee_sheet_id = ?
+            ORDER BY display_order, id
+        """, (sheet_id,))
+        rows = cursor.fetchall()
 
-            <button class="btn btn-upload" type="submit">
-                Upload Tee Sheet
-            </button>
-        </form>
+    return [row_to_dict(r) for r in rows]
 
-        <div id="tee-sheet-button-area">
-            {% if has_sheet %}
-                <a href="/tee-sheet" style="text-decoration: none;">
-                    <button class="btn btn-open" type="button">
-                        Open Tee Sheet
-                    </button>
-                </a>
-            {% else %}
-                <button class="btn btn-open btn-disabled" disabled>
-                    No Tee Sheet Available
-                </button>
-                <div class="helper-text">
-                    Upload a tee sheet to get started
-                </div>
-            {% endif %}
-        </div>
 
-        {% if extracted_text %}
-            <h2 class="section-title">Extracted Text</h2>
-            <div class="text-output">{{ extracted_text }}</div>
-        {% endif %}
+def load_data():
+    sheet = get_active_sheet()
+    if not sheet:
+        return {"sheet_id": None, "rows": [], "date": ""}
 
-    </div>
+    return {
+        "sheet_id": sheet["id"],
+        "rows": get_sheet_rows(sheet["id"]),
+        "date": sheet["date"]
+    }
 
-    <script>
-        async function checkTeeSheetStatus() {
-            try {
-                const response = await fetch("/api/status");
-                const data = await response.json();
 
-                const buttonArea = document.getElementById("tee-sheet-button-area");
+def create_new_sheet(sheet_date, source_filename, rows):
+    with get_connection() as conn:
+        cursor = conn.cursor()
 
-                if (data.has_sheet) {
-                    buttonArea.innerHTML = `
-                        <a href="/tee-sheet" style="text-decoration: none;">
-                            <button class="btn btn-open" type="button">
-                                Open Tee Sheet
-                            </button>
-                        </a>
-                    `;
-                } else {
-                    buttonArea.innerHTML = `
-                        <button class="btn btn-open btn-disabled" disabled>
-                            No Tee Sheet Available
-                        </button>
-                        <div class="helper-text">
-                            Upload a tee sheet to get started
-                        </div>
-                    `;
-                }
-            } catch (error) {
-                console.error("Status check failed:", error);
-            }
-        }
+        cursor.execute("""
+            UPDATE dbo.tee_sheets
+            SET is_active = 0,
+                updated_at = GETDATE()
+            WHERE is_active = 1
+        """)
 
-        setInterval(checkTeeSheetStatus, 5000);
-        checkTeeSheetStatus();
-    </script>
+        cursor.execute("""
+            INSERT INTO dbo.tee_sheets (sheet_date, source_filename, is_active)
+            OUTPUT INSERTED.id
+            VALUES (?, ?, 1)
+        """, (sheet_date, source_filename))
 
-</body>
-</html>
+        tee_sheet_id = cursor.fetchone()[0]
+
+        for idx, row in enumerate(rows):
+            cursor.execute("""
+                INSERT INTO dbo.tee_sheet_rows (
+                    tee_sheet_id,
+                    reservation_time,
+                    group_name,
+                    players,
+                    num_players,
+                    walkers,
+                    riders,
+                    group_type,
+                    front_course,
+                    back_course,
+                    rotation,
+                    total_time,
+                    average_hole,
+                    display_order
+                )
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            """, (
+                tee_sheet_id,
+                row.get("reservation_time") or "",
+                row.get("group_name") or "",
+                row.get("players") or "",
+                int(row["num_players"]) if str(row.get("num_players", "")).isdigit() else None,
+                int(row["walkers"]) if str(row.get("walkers", "")).isdigit() else None,
+                int(row["riders"]) if str(row.get("riders", "")).isdigit() else None,
+                row.get("group_type") or "",
+                row.get("front") or "",
+                row.get("back") or "",
+                row.get("rotation") or "",
+                row.get("total_time") or "",
+                row.get("average_hole") or "",
+                idx
+            ))
+
+        conn.commit()
+
+    return tee_sheet_id
+
+
+def resequence_rows(sheet_id):
+    rows = get_sheet_rows(sheet_id)
+
+    with get_connection() as conn:
+        cursor = conn.cursor()
+
+        for idx, row in enumerate(rows):
+            cursor.execute("""
+                UPDATE dbo.tee_sheet_rows
+                SET display_order = ?,
+                    updated_at = GETDATE()
+                WHERE id = ?
+            """, (idx, row["id"]))
+
+        cursor.execute("""
+            UPDATE dbo.tee_sheets
+            SET updated_at = GETDATE()
+            WHERE id = ?
+        """, (sheet_id,))
+
+        conn.commit()
+
+
+def add_row_to_active_sheet(row_data):
+    data = load_data()
+    sheet_id = data["sheet_id"]
+
+    if not sheet_id:
+        return None
+
+    with get_connection() as conn:
+        cursor = conn.cursor()
+
+        cursor.execute("""
+            UPDATE dbo.tee_sheet_rows
+            SET display_order = display_order + 1,
+                updated_at = GETDATE()
+            WHERE tee_sheet_id = ?
+        """, (sheet_id,))
+
+        cursor.execute("""
+            INSERT INTO dbo.tee_sheet_rows (
+                tee_sheet_id,
+                reservation_time,
+                group_name,
+                players,
+                num_players,
+                walkers,
+                riders,
+                group_type,
+                front_course,
+                back_course,
+                rotation,
+                total_time,
+                average_hole,
+                display_order
+            )
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0)
+        """, (
+            sheet_id,
+            row_data.get("reservation_time") or "",
+            row_data.get("group_name") or "",
+            row_data.get("players") or "",
+            int(row_data["num_players"]) if str(row_data.get("num_players", "")).isdigit() else None,
+            int(row_data["walkers"]) if str(row_data.get("walkers", "")).isdigit() else None,
+            int(row_data["riders"]) if str(row_data.get("riders", "")).isdigit() else None,
+            row_data.get("group_type") or "",
+            row_data.get("front") or "",
+            row_data.get("back") or "",
+            row_data.get("rotation") or "",
+            row_data.get("total_time") or "",
+            row_data.get("average_hole") or ""
+        ))
+
+        cursor.execute("""
+            UPDATE dbo.tee_sheets
+            SET updated_at = GETDATE()
+            WHERE id = ?
+        """, (sheet_id,))
+
+        conn.commit()
+
+    return True
+
+
+def save_sorted_rows(sheet_id, rows):
+    with get_connection() as conn:
+        cursor = conn.cursor()
+
+        for idx, row in enumerate(rows):
+            cursor.execute("""
+                UPDATE dbo.tee_sheet_rows
+                SET display_order = ?,
+                    reservation_time = ?,
+                    group_name = ?,
+                    players = ?,
+                    num_players = ?,
+                    walkers = ?,
+                    riders = ?,
+                    group_type = ?,
+                    front_course = ?,
+                    back_course = ?,
+                    rotation = ?,
+                    total_time = ?,
+                    average_hole = ?,
+                    updated_at = GETDATE()
+                WHERE id = ? AND tee_sheet_id = ?
+            """, (
+                idx,
+                row.get("reservation_time") or "",
+                row.get("group_name") or "",
+                row.get("players") or "",
+                int(row["num_players"]) if str(row.get("num_players", "")).isdigit() else None,
+                int(row["walkers"]) if str(row.get("walkers", "")).isdigit() else None,
+                int(row["riders"]) if str(row.get("riders", "")).isdigit() else None,
+                row.get("group_type") or "",
+                row.get("front") or "",
+                row.get("back") or "",
+                row.get("rotation") or "",
+                row.get("total_time") or "",
+                row.get("average_hole") or "",
+                row["id"],
+                sheet_id
+            ))
+
+        cursor.execute("""
+            UPDATE dbo.tee_sheets
+            SET updated_at = GETDATE()
+            WHERE id = ?
+        """, (sheet_id,))
+
+        conn.commit()
+
+
+def delete_row_by_id(sheet_id, row_id):
+    with get_connection() as conn:
+        cursor = conn.cursor()
+
+        cursor.execute("""
+            DELETE FROM dbo.tee_sheet_rows
+            WHERE id = ? AND tee_sheet_id = ?
+        """, (row_id, sheet_id))
+
+        cursor.execute("""
+            UPDATE dbo.tee_sheets
+            SET updated_at = GETDATE()
+            WHERE id = ?
+        """, (sheet_id,))
+
+        conn.commit()
+
+    resequence_rows(sheet_id)
+
+
+def clear_active_sheet():
+    sheet = get_active_sheet()
+    if not sheet:
+        return
+
+    sheet_id = sheet["id"]
+
+    with get_connection() as conn:
+        cursor = conn.cursor()
+
+        cursor.execute("DELETE FROM dbo.tee_sheet_rows WHERE tee_sheet_id = ?", (sheet_id,))
+        cursor.execute("""
+            UPDATE dbo.tee_sheets
+            SET is_active = 0,
+                updated_at = GETDATE()
+            WHERE id = ?
+        """, (sheet_id,))
+
+        conn.commit()
+
+
+def archive_active_sheet():
+    sheet = get_active_sheet()
+    if not sheet:
+        return False
+
+    with get_connection() as conn:
+        cursor = conn.cursor()
+        cursor.execute("""
+            UPDATE dbo.tee_sheets
+            SET is_active = 0,
+                updated_at = GETDATE()
+            WHERE id = ?
+        """, (sheet["id"],))
+        conn.commit()
+
+    return True
+
+
+def get_archived_sheets():
+    with get_connection() as conn:
+        cursor = conn.cursor()
+        cursor.execute("""
+            SELECT id, sheet_date, source_filename, updated_at
+            FROM dbo.tee_sheets
+            WHERE is_active = 0
+            ORDER BY sheet_date DESC, id DESC
+        """)
+        rows = cursor.fetchall()
+
+    archived = []
+    for row in rows:
+        sheet_date = row[1]
+        try:
+            formatted_date = sheet_date.strftime("%B %d, %Y") if sheet_date else ""
+        except AttributeError:
+            formatted_date = str(sheet_date) if sheet_date else ""
+
+        archived.append({
+            "id": row[0],
+            "date": formatted_date,
+            "source_filename": row[2] or "",
+            "updated_at": row[3]
+        })
+
+    return archived
+
+
+# ---------------- HELPERS ----------------
+
+def sort_rows_by_time(rows):
+    def parse_time(row):
+        value = (row.get("reservation_time") or "").strip()
+        if not value:
+            return datetime.max
+
+        for fmt in ("%I:%M %p", "%H:%M", "%I:%M"):
+            try:
+                return datetime.strptime(value, fmt)
+            except ValueError:
+                continue
+
+        return datetime.max
+
+    rows.sort(key=parse_time)
+
+
+def player_count_options(num):
+    return list(range(0, int(num) + 1)) if str(num).isdigit() else [0, 1, 2, 3, 4]
+
+
+def format_total_time(value):
+    value = (value or "").strip()
+    digits = "".join(ch for ch in value if ch.isdigit())
+
+    if len(digits) == 3:
+        return f"{digits[0]}:{digits[1:]}"
+    if len(digits) == 4:
+        return f"{digits[:2]}:{digits[2:]}"
+    return value
+
+
+def format_reservation_time(value):
+    value = (value or "").strip()
+    digits = "".join(ch for ch in value if ch.isdigit())
+
+    if len(digits) == 3:
+        return f"{int(digits[0])}:{digits[1:]}"
+    if len(digits) == 4:
+        hours = str(int(digits[:2]))
+        return f"{hours}:{digits[2:]}"
+    return value
+
+
+def apply_derived_fields(row):
+    players_text = (row.get("players") or "").strip()
+    player_list = [p.strip() for p in players_text.split(",") if p.strip()]
+
+    if player_list:
+        row["num_players"] = str(len(player_list))
+    else:
+        row["num_players"] = str(row.get("num_players") or "").strip()
+
+    walkers = str(row.get("walkers") or "").strip()
+    try:
+        num_players_int = int(row.get("num_players") or 0)
+        walkers_int = int(walkers) if walkers != "" else None
+        if walkers_int is not None:
+            row["riders"] = str(num_players_int - walkers_int)
+        else:
+            row["riders"] = ""
+    except Exception:
+        row["riders"] = ""
+
+    if walkers == "":
+        row["group_type"] = ""
+    else:
+        try:
+            walkers_int = int(walkers)
+            num_players_int = int(row.get("num_players") or 0)
+
+            if walkers_int == 0:
+                row["group_type"] = "Ride"
+            elif walkers_int == num_players_int:
+                row["group_type"] = "Walk"
+            else:
+                row["group_type"] = "Mixed"
+        except Exception:
+            row["group_type"] = ""
+
+    front = str(row.get("front") or "").strip()
+    back = str(row.get("back") or "").strip()
+
+    if front and back:
+        row["rotation"] = f"{front}-{back}"
+        holes = 18
+    elif front or back:
+        row["rotation"] = front or back
+        holes = 9
+    else:
+        row["rotation"] = ""
+        holes = 0
+
+    row["total_time"] = format_total_time(row.get("total_time") or "")
+    row["reservation_time"] = format_reservation_time(row.get("reservation_time") or "")
+
+    total_time = row["total_time"]
+    row["average_hole"] = ""
+
+    try:
+        if total_time and holes > 0 and ":" in total_time:
+            hours_part, minutes_part = total_time.split(":")
+            total_minutes = int(hours_part) * 60 + int(minutes_part)
+
+            avg_minutes_float = total_minutes / holes
+            avg_total_seconds = round(avg_minutes_float * 60)
+
+            avg_minutes = avg_total_seconds // 60
+            avg_seconds = avg_total_seconds % 60
+
+            row["average_hole"] = f"{avg_minutes}:{avg_seconds:02d}"
+    except Exception:
+        row["average_hole"] = ""
+
+    return row
+
+
+def calculate_summary(rows):
+    def round_time_to_minutes(value):
+        value = (value or "").strip()
+        if not value or ":" not in value:
+            return None
+
+        try:
+            hours, minutes = value.split(":")
+            return int(hours) * 60 + int(minutes)
+        except Exception:
+            return None
+
+    def minutes_to_round_time(total_minutes):
+        if total_minutes is None:
+            return "-"
+
+        hours = total_minutes // 60
+        minutes = total_minutes % 60
+        return f"{hours}:{minutes:02d}"
+
+    valid_rounds = []
+    cart_rounds = []
+    walk_rounds = []
+    mixed_rounds = []
+
+    rotation_buckets = {
+        "South-East": [],
+        "South-West": [],
+        "East-West": [],
+        "East-South": [],
+        "West-East": [],
+        "West-South": [],
+        "South": [],
+        "West": [],
+        "East": []
+    }
+
+    fastest_name = ""
+    slowest_name = ""
+
+    for row in rows:
+        total_time_str = row.get("total_time", "")
+        total_minutes = round_time_to_minutes(total_time_str)
+
+        front = (row.get("front") or "").strip()
+        back = (row.get("back") or "").strip()
+        is_18_holes = bool(front and back)
+
+        try:
+            num_players = int(row.get("num_players") or 0)
+        except Exception:
+            num_players = 0
+
+        try:
+            walkers = int(row.get("walkers")) if str(row.get("walkers", "")).strip() != "" else None
+        except Exception:
+            walkers = None
+
+        try:
+            riders = int(row.get("riders")) if str(row.get("riders", "")).strip() != "" else None
+        except Exception:
+            riders = None
+
+        if is_18_holes and total_minutes is not None:
+            valid_rounds.append((total_minutes, row.get("group_name", "")))
+
+            if walkers is not None and riders is not None and num_players > 0:
+                if riders == num_players and walkers == 0:
+                    cart_rounds.append(total_minutes)
+                elif walkers == num_players and riders == 0:
+                    walk_rounds.append(total_minutes)
+                elif walkers > 0 and riders > 0:
+                    mixed_rounds.append(total_minutes)
+
+        rotation = (row.get("rotation") or "").strip()
+        if is_18_holes and rotation in rotation_buckets and total_minutes is not None:
+            rotation_buckets[rotation].append(total_minutes)
+
+    fastest = "-"
+    slowest = "-"
+    average = "-"
+
+    if valid_rounds:
+        fastest_minutes, fastest_name = min(valid_rounds, key=lambda x: x[0])
+        slowest_minutes, slowest_name = max(valid_rounds, key=lambda x: x[0])
+
+        avg_minutes = round(sum(t for t, _ in valid_rounds) / len(valid_rounds))
+
+        fastest = minutes_to_round_time(fastest_minutes)
+        slowest = minutes_to_round_time(slowest_minutes)
+        average = minutes_to_round_time(avg_minutes)
+
+    cart_avg = minutes_to_round_time(round(sum(cart_rounds) / len(cart_rounds))) if cart_rounds else "-"
+    walk_avg = minutes_to_round_time(round(sum(walk_rounds) / len(walk_rounds))) if walk_rounds else "-"
+    mixed_avg = minutes_to_round_time(round(sum(mixed_rounds) / len(mixed_rounds))) if mixed_rounds else "-"
+
+    rotation_pace = {}
+    for rotation_name, values in rotation_buckets.items():
+        if values:
+            rotation_pace[rotation_name] = minutes_to_round_time(round(sum(values) / len(values)))
+        else:
+            rotation_pace[rotation_name] = "-"
+
+    return {
+        "groups": len(rows),
+        "total_walkers": sum(int(r.get("walkers") or 0) for r in rows if str(r.get("walkers", "")).strip() != ""),
+        "total_riders": sum(int(r.get("riders") or 0) for r in rows if str(r.get("riders", "")).strip() != ""),
+        "fastest": fastest,
+        "fastest_name": fastest_name,
+        "slowest": slowest,
+        "slowest_name": slowest_name,
+        "average": average,
+        "cart_avg": cart_avg,
+        "walker_avg": walk_avg,
+        "mixed_avg": mixed_avg,
+        "rotation_pace": rotation_pace
+    }
+
+
+def extract_pdf_text(path):
+    rows = []
+
+    time_only_pattern = re.compile(r"^\d{2}:\d{2}\s[AP]M$")
+    inline_time_pattern = re.compile(r"^(\d{2}:\d{2}\s[AP]M)\b")
+    last_name_pattern = re.compile(r"^([A-Za-z'`\- ]+),\s")
+    inline_last_name_pattern = re.compile(r"([A-Za-z'`\- ]+),\s+[A-Za-z]")
+
+    with fitz.open(path) as doc:
+        lines = []
+        for page in doc:
+            for raw_line in page.get_text("text").splitlines():
+                line = raw_line.strip()
+                if line:
+                    lines.append(line)
+
+    i = 0
+    while i < len(lines):
+        line = lines[i]
+
+        if time_only_pattern.match(line):
+            reservation_time = line
+            i += 1
+
+            if i < len(lines) and lines[i] == "E":
+                i += 1
+                continue
+
+            player_last_names = []
+
+            while i < len(lines):
+                current = lines[i]
+
+                if time_only_pattern.match(current):
+                    break
+
+                if inline_time_pattern.match(current):
+                    break
+
+                name_match = last_name_pattern.match(current)
+                if name_match:
+                    player_last_names.append(name_match.group(1).strip())
+
+                i += 1
+
+            if player_last_names:
+                rows.append({
+                    "reservation_time": reservation_time,
+                    "group_name": f"{player_last_names[0]} Group",
+                    "players": ", ".join(player_last_names),
+                    "num_players": str(len(player_last_names)),
+                    "walkers": "",
+                    "riders": "",
+                    "group_type": "",
+                    "front": "",
+                    "back": "",
+                    "rotation": "",
+                    "total_time": "",
+                    "average_hole": ""
+                })
+            continue
+
+        inline_time_match = inline_time_pattern.match(line)
+        if inline_time_match:
+            reservation_time = inline_time_match.group(1)
+
+            if re.search(r"\bE\b", line):
+                i += 1
+                continue
+
+            inline_last_names = []
+            for match in inline_last_name_pattern.finditer(line):
+                inline_last_names.append(match.group(1).strip())
+
+            if inline_last_names:
+                rows.append({
+                    "reservation_time": reservation_time,
+                    "group_name": f"{inline_last_names[0]} Group",
+                    "players": ", ".join(inline_last_names),
+                    "num_players": str(len(inline_last_names)),
+                    "walkers": "",
+                    "riders": "",
+                    "group_type": "",
+                    "front": "",
+                    "back": "",
+                    "rotation": "",
+                    "total_time": "",
+                    "average_hole": ""
+                })
+
+        i += 1
+
+    return rows
+
+
+# ---------------- ROUTES ----------------
+
+@app.route("/")
+def home():
+    data = load_data()
+    return render_template(
+        "index.html",
+        has_sheet=len(data["rows"]) > 0,
+        db_status="Connected",
+        upload_status=None,
+        uploaded_filename=None,
+        extracted_text=None
+    )
+
+
+@app.route("/upload", methods=["POST"])
+def upload():
+    if "tee_sheet_pdf" not in request.files:
+        return redirect("/")
+
+    file = request.files["tee_sheet_pdf"]
+
+    if file.filename == "":
+        return redirect("/")
+
+    temp_path = "temp.pdf"
+    file.save(temp_path)
+
+    rows = extract_pdf_text(temp_path)
+
+    create_new_sheet(datetime.now().date(), file.filename, rows)
+    log_upload(file.filename)
+
+    if os.path.exists(temp_path):
+        os.remove(temp_path)
+
+    return redirect("/tee-sheet")
+
+
+@app.route("/tee-sheet")
+def tee_sheet():
+    data = load_data()
+
+    rows = data["rows"]
+    for row in rows:
+        apply_derived_fields(row)
+
+    edit_id = request.args.get("edit")
+    edit_id = int(edit_id) if edit_id is not None else None
+
+    return render_template(
+        "tee_sheet.html",
+        rows=rows,
+        tee_sheet_date=data["date"],
+        summary=calculate_summary(rows),
+        edit_id=edit_id,
+        player_count_options=player_count_options
+    )
+
+
+@app.route("/add-reservation", methods=["POST"])
+def add_reservation():
+    added = add_row_to_active_sheet({
+        "reservation_time": "",
+        "group_name": "",
+        "players": "",
+        "num_players": "",
+        "walkers": "",
+        "riders": "",
+        "group_type": "",
+        "front": "",
+        "back": "",
+        "rotation": "",
+        "total_time": "",
+        "average_hole": ""
+    })
+
+    if not added:
+        return redirect("/")
+
+    return redirect("/tee-sheet?edit=0#row-0")
+
+
+@app.route("/save/<int:index>", methods=["POST"])
+def save(index):
+    data = load_data()
+    rows = data["rows"]
+    sheet_id = data["sheet_id"]
+
+    if index < 0 or index >= len(rows) or not sheet_id:
+        return redirect("/tee-sheet")
+
+    row = rows[index]
+
+    players_text = (request.form.get("players") or "").strip()
+    player_list = [p.strip() for p in players_text.split(",") if p.strip()]
+
+    raw_time = (request.form.get("reservation_time") or "").strip()
+    row["reservation_time"] = format_reservation_time(raw_time)
+    row["players"] = players_text
+    row["num_players"] = str(len(player_list))
+    row["group_name"] = f"{player_list[0]} Group" if player_list else ""
+    row["walkers"] = request.form.get("walkers", "").strip()
+    row["front"] = request.form.get("front", "").strip()
+    row["back"] = request.form.get("back", "").strip()
+    row["total_time"] = (request.form.get("total_time") or "").strip()
+
+    apply_derived_fields(row)
+
+    sort_rows_by_time(rows)
+    save_sorted_rows(sheet_id, rows)
+
+    return redirect("/tee-sheet")
+
+
+@app.route("/delete/<int:index>", methods=["POST"])
+def delete(index):
+    data = load_data()
+    rows = data["rows"]
+    sheet_id = data["sheet_id"]
+
+    if 0 <= index < len(rows) and sheet_id:
+        row_id = rows[index]["id"]
+        delete_row_by_id(sheet_id, row_id)
+
+    return redirect("/tee-sheet")
+
+
+@app.route("/clear-tee-sheet", methods=["POST"])
+def clear():
+    clear_active_sheet()
+    return redirect("/")
+
+
+@app.route("/archive-day", methods=["POST"])
+def archive_day():
+    archive_active_sheet()
+    return redirect("/")
+
+
+@app.route("/archive")
+def archive():
+    sheets = get_archived_sheets()
+    return render_template("archive.html", sheets=sheets)
+
+
+@app.route("/archive/<int:sheet_id>")
+def archive_sheet(sheet_id):
+    sheet = get_sheet_by_id(sheet_id)
+    if not sheet:
+        return redirect("/archive")
+
+    rows = get_sheet_rows(sheet_id)
+    for row in rows:
+        apply_derived_fields(row)
+
+    return render_template(
+        "archive_sheet.html",
+        rows=rows,
+        tee_sheet_date=sheet["date"],
+        source_filename=sheet["source_filename"],
+        summary=calculate_summary(rows)
+    )
+
+
+# ---------------- RUN ----------------
+
+if __name__ == "__main__":
+    app.run(debug=True)
