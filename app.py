@@ -788,26 +788,33 @@ def home():
 
 @app.route("/upload", methods=["POST"])
 def upload():
-    if "tee_sheet_pdf" not in request.files:
-        return redirect("/")
+    try:
+        if "tee_sheet_pdf" not in request.files:
+            return "Upload error: tee_sheet_pdf not found in request.files"
 
-    file = request.files["tee_sheet_pdf"]
+        file = request.files["tee_sheet_pdf"]
 
-    if file.filename == "":
-        return redirect("/")
+        if file.filename == "":
+            return "Upload error: no file selected"
 
-    temp_path = "temp.pdf"
-    file.save(temp_path)
+        temp_path = "temp.pdf"
+        file.save(temp_path)
 
-    rows = extract_pdf_text(temp_path)
+        rows = extract_pdf_text(temp_path)
 
-    create_new_sheet(datetime.now().date(), file.filename, rows)
-    log_upload(file.filename)
+        if rows is None:
+            return "Upload error: extract_pdf_text returned None"
 
-    if os.path.exists(temp_path):
-        os.remove(temp_path)
+        create_new_sheet(datetime.now().date(), file.filename, rows)
+        log_upload(file.filename)
 
-    return redirect("/tee-sheet")
+        if os.path.exists(temp_path):
+            os.remove(temp_path)
+
+        return redirect("/tee-sheet")
+
+    except Exception as e:
+        return f"Upload error: {e}"
 
 
 @app.route("/tee-sheet")
