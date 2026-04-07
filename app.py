@@ -788,7 +788,40 @@ def home():
 
 @app.route("/upload", methods=["POST"])
 def upload():
-    return "UPLOAD ROUTE HIT"
+    try:
+        if "tee_sheet_pdf" not in request.files:
+            return "step 1 failed: tee_sheet_pdf not found"
+
+        file = request.files["tee_sheet_pdf"]
+
+        if file.filename == "":
+            return "step 2 failed: empty filename"
+
+        temp_path = "temp.pdf"
+        file.save(temp_path)
+
+        if not os.path.exists(temp_path):
+            return "step 3 failed: temp file not saved"
+
+        rows = extract_pdf_text(temp_path)
+
+        if rows is None:
+            return "step 4 failed: extract_pdf_text returned None"
+
+        if not isinstance(rows, list):
+            return f"step 4 failed: extract_pdf_text returned {type(rows)}"
+
+        create_new_sheet(datetime.now().date(), file.filename, rows)
+
+        log_upload(file.filename)
+
+        if os.path.exists(temp_path):
+            os.remove(temp_path)
+
+        return redirect("/tee-sheet")
+
+    except Exception as e:
+        return f"upload error: {e}"
 
 
 @app.route("/tee-sheet")
