@@ -26,13 +26,11 @@
         }
 
         .nav-inner {
-            max-width: 1600px;
-            margin: 0 auto;
-            padding: 14px 30px;
+            width: 100%;
+            padding: 14px 20px;
             display: flex;
             align-items: center;
-            gap: 12px;
-            flex-wrap: wrap;
+            justify-content: space-between; /* 👈 KEY */
         }
 
         .nav-title {
@@ -53,6 +51,41 @@
 
         .nav-link:hover {
             background: rgba(255, 255, 255, 0.24);
+        }
+
+        .nav-left {
+            display: flex;
+            align-items: center;
+            gap: 14px;
+        }
+
+        .nav-right {
+            display: flex;
+            align-items: center;
+        }
+
+        .nav-profile {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            cursor: pointer;
+        }
+
+        .nav-user {
+            color: white;
+            font-size: 14px;
+        }
+
+        .nav-avatar {
+            width: 34px;
+            height: 34px;
+            border-radius: 50%;
+            background: rgba(255,255,255,0.2);
+            color: white;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
         }
 
         .page-shell {
@@ -488,12 +521,26 @@
     </style>
 </head>
 <body data-editing="{% if edit_id is not none %}true{% else %}false{% endif %}">
-    <nav class="nav-bar">
-        <div class="nav-inner">
-            <a class="nav-link" href="/">Home</a>
-            <a class="nav-link" href="/tee-sheet">Tee Sheet</a>
+    <div class="nav-bar">
+    <div class="nav-inner">
+
+        <!-- LEFT SIDE -->
+        <div class="nav-left">
+            <div class="nav-title">Pace Control</div>
+            <a href="/" class="nav-link">Home</a>
+            <a href="/tee-sheet" class="nav-link">Tee Sheet</a>
         </div>
-    </nav>
+
+        <!-- RIGHT SIDE -->
+        <div class="nav-right">
+            <div class="nav-profile">
+                <span class="nav-user">Nicholas</span>
+                <div class="nav-avatar">N</div>
+            </div>
+        </div>
+
+    </div>
+    </div>
 
     <div class="page-shell">
 
