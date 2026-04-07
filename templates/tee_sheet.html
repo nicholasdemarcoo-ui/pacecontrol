@@ -625,7 +625,7 @@
                         {% if edit_id == loop.index0 %}
                         <tr id="row-{{ loop.index0 }}" class="editing-row">
                             <td class="col-actions">
-                                <form action="/save/{{ loop.index0 }}" method="POST" class="save-row-form" data-row-id="{{ loop.index0 }}">
+                                <form action="/save/{{ loop.index0 }}" method="POST" class="save-row-form">
                                     <div class="actions">
                                         <button class="btn btn-save" type="submit">Save</button>
                                         <a class="btn btn-cancel" href="/tee-sheet#row-{{ loop.index0 }}">Cancel</a>
@@ -877,53 +877,20 @@
             });
         });
 
-        document.querySelectorAll('form[action^="/save/"]').forEach(form => {
-            form.addEventListener("submit", () => {
-                const timeInput = form.querySelector(".time-input");
-                if (timeInput) {
-                    timeInput.value = formatReservationTimeInput(timeInput.value, timeInput.dataset.originalValue || "");
-                }
-            });
-        });
-
-        const params = new URLSearchParams(window.location.search);
-        if (params.get("saved") === "1") {
-            window.scrollTo({ top: 0, left: 0, behavior: "auto" });
-            const cleanUrl = `${window.location.pathname}${window.location.hash || ""}`;
-            window.history.replaceState({}, "", cleanUrl);
-        }
-
-        if (!isEditing) {
-            window.history.pushState({ teeSheetPage: true }, "", window.location.href);
-            window.addEventListener("popstate", () => {
-                window.location.href = "/";
-            });
-
-            checkForUpdates();
-            setInterval(checkForUpdates, 3000);
-        }
         document.querySelectorAll(".save-row-form").forEach(form => {
-        form.addEventListener("submit", async (event) => {
-        event.preventDefault();
+            form.addEventListener("submit", async (event) => {
+            event.preventDefault();
 
-        const submitButton = form.querySelector(".btn-save");
-        const currentScrollTop = bodyScroll ? bodyScroll.scrollTop : window.scrollY;
-        const currentScrollLeft = bodyScroll ? bodyScroll.scrollLeft : window.scrollX;
+            const submitButton = form.querySelector(".btn-save");
+            const savedScrollTop = bodyScroll ? bodyScroll.scrollTop : 0;
+            const savedScrollLeft = bodyScroll ? bodyScroll.scrollLeft : 0;
 
-        const timeInput = form.querySelector('input[name="reservation_time"]');
-        if (timeInput) {
-            timeInput.value = formatReservationTimeInput(
-                timeInput.value,
-                timeInput.dataset.originalValue || timeInput.defaultValue || ""
-            );
-        }
-
-        if (submitButton) {
+            if (submitButton) {
             submitButton.disabled = true;
             submitButton.textContent = "Saving...";
-        }
+            }
 
-        try {
+            try {
             const response = await fetch(form.action, {
                 method: "POST",
                 body: new FormData(form)
@@ -936,14 +903,14 @@
                 return;
             }
 
-            sessionStorage.setItem("teeSheetScrollTop", String(currentScrollTop));
-            sessionStorage.setItem("teeSheetScrollLeft", String(currentScrollLeft));
+            sessionStorage.setItem("teeSheetScrollTop", String(savedScrollTop));
+            sessionStorage.setItem("teeSheetScrollLeft", String(savedScrollLeft));
 
             window.location.reload();
-        } catch (error) {
+            } catch (error) {
             console.error("Save failed:", error);
             alert("There was a problem saving the row.");
-        } finally {
+            } finally {
             if (submitButton) {
                 submitButton.disabled = false;
                 submitButton.textContent = "Save";
@@ -952,17 +919,17 @@
     });
 });
 
-window.addEventListener("load", () => {
-    const savedTop = sessionStorage.getItem("teeSheetScrollTop");
-    const savedLeft = sessionStorage.getItem("teeSheetScrollLeft");
+            window.addEventListener("load", () => {
+            const savedTop = sessionStorage.getItem("teeSheetScrollTop");
+            const savedLeft = sessionStorage.getItem("teeSheetScrollLeft");
 
-    if (bodyScroll && savedTop !== null) {
-        bodyScroll.scrollTop = parseInt(savedTop, 10) || 0;
-        bodyScroll.scrollLeft = parseInt(savedLeft || "0", 10) || 0;
+            if (bodyScroll && savedTop !== null) {
+            bodyScroll.scrollTop = parseInt(savedTop, 10) || 0;
+            bodyScroll.scrollLeft = parseInt(savedLeft || "0", 10) || 0;
     }
 
-    sessionStorage.removeItem("teeSheetScrollTop");
-    sessionStorage.removeItem("teeSheetScrollLeft");
+            sessionStorage.removeItem("teeSheetScrollTop");
+            sessionStorage.removeItem("teeSheetScrollLeft");
 });
     </script>
 </body>

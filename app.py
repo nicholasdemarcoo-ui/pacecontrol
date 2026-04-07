@@ -846,7 +846,7 @@ def save(index):
     player_list = [p.strip() for p in players_text.split(",") if p.strip()]
 
     raw_time = (request.form.get("reservation_time") or "").strip()
-    row["reservation_time"] = format_reservation_time(raw_time, row.get("reservation_time", ""))
+    row["reservation_time"] = format_reservation_time(raw_time)
     row["players"] = players_text
     row["num_players"] = str(len(player_list))
     row["group_name"] = f"{player_list[0]} Group" if player_list else ""
