@@ -1,21 +1,85 @@
 import os
 import re
 from datetime import datetime
+from pathlib import Path
 
 import fitz
 from dotenv import load_dotenv
-from flask import Flask, redirect, render_template, request, jsonify
+from flask import (
+    Flask,
+    flash,
+    redirect,
+    render_template,
+    request,
+    send_from_directory,
+    url_for,
+)
 from mssql_python import connect
+from reportlab.lib.pagesizes import letter
+from reportlab.pdfgen import canvas
 
 load_dotenv()
 
 app = Flask(__name__)
+app.secret_key = os.getenv("FLASK_SECRET_KEY", "dev-secret-key")
+
+BASE_DIR = Path(__file__).resolve().parent
+PDF_FOLDER = BASE_DIR / "static" / "archived_pdfs"
+PDF_FOLDER.mkdir(parents=True, exist_ok=True)
 
 
 # ---------------- DATABASE ----------------
 
 def get_connection():
     return connect(os.getenv("SQL_CONNECTION_STRING"))
+
+
+def ensure_archive_tables():
+    with get_connection() as conn:
+        cursor = conn.cursor()
+
+        cursor.execute("""
+            IF OBJECT_ID('dbo.archived_days', 'U') IS NULL
+            BEGIN
+                CREATE TABLE dbo.archived_days (
+                    id INT IDENTITY(1,1) PRIMARY KEY,
+                    original_sheet_id INT NULL,
+                    play_date DATE NULL,
+                    title NVARCHAR(255) NULL,
+                    summary_pdf NVARCHAR(500) NULL,
+                    source_filename NVARCHAR(255) NULL,
+                    created_at DATETIME2 NOT NULL DEFAULT GETDATE()
+                )
+            END
+        """)
+
+        cursor.execute("""
+            IF OBJECT_ID('dbo.archived_tee_sheet_rows', 'U') IS NULL
+            BEGIN
+                CREATE TABLE dbo.archived_tee_sheet_rows (
+                    id INT IDENTITY(1,1) PRIMARY KEY,
+                    archived_day_id INT NOT NULL,
+                    reservation_time NVARCHAR(50) NULL,
+                    group_name NVARCHAR(255) NULL,
+                    players NVARCHAR(MAX) NULL,
+                    num_players INT NULL,
+                    walkers INT NULL,
+                    riders INT NULL,
+                    group_type NVARCHAR(50) NULL,
+                    front_course NVARCHAR(50) NULL,
+                    back_course NVARCHAR(50) NULL,
+                    rotation NVARCHAR(50) NULL,
+                    total_time NVARCHAR(50) NULL,
+                    average_hole NVARCHAR(50) NULL,
+                    display_order INT NOT NULL DEFAULT 0,
+                    created_at DATETIME2 NOT NULL DEFAULT GETDATE(),
+                    CONSTRAINT FK_archived_tee_sheet_rows_archived_days
+                        FOREIGN KEY (archived_day_id) REFERENCES dbo.archived_days(id)
+                )
+            END
+        """)
+
+        conn.commit()
 
 
 def log_upload(filename):
@@ -60,6 +124,18 @@ def row_to_dict(row):
     }
 
 
+def archive_day_row_to_dict(row):
+    return {
+        "id": row[0],
+        "original_sheet_id": row[1],
+        "play_date": row[2],
+        "title": row[3] or "",
+        "summary_pdf": row[4] or "",
+        "source_filename": row[5] or "",
+        "created_at": row[6],
+    }
+
+
 def get_active_sheet():
     with get_connection() as conn:
         cursor = conn.cursor()
@@ -83,6 +159,7 @@ def get_active_sheet():
     return {
         "id": row[0],
         "date": formatted_date,
+        "sheet_date_raw": sheet_date,
         "source_filename": row[2] or "",
         "updated_at": row[3]
     }
@@ -358,6 +435,236 @@ def clear_active_sheet():
         """, (sheet_id,))
 
         conn.commit()
+
+
+def get_archived_days():
+    ensure_archive_tables()
+
+    with get_connection() as conn:
+        cursor = conn.cursor()
+        cursor.execute("""
+            SELECT
+                id,
+                original_sheet_id,
+                play_date,
+                title,
+                summary_pdf,
+                source_filename,
+                created_at
+            FROM dbo.archived_days
+            ORDER BY play_date DESC, created_at DESC, id DESC
+        """)
+        rows = cursor.fetchall()
+
+    archived_days = []
+    for row in rows:
+        item = archive_day_row_to_dict(row)
+
+        play_date = item["play_date"]
+        try:
+            item["play_date_formatted"] = play_date.strftime("%B %d, %Y") if play_date else ""
+        except AttributeError:
+            item["play_date_formatted"] = str(play_date) if play_date else ""
+
+        archived_days.append(item)
+
+    return archived_days
+
+
+def get_archived_rows(archived_day_id):
+    ensure_archive_tables()
+
+    with get_connection() as conn:
+        cursor = conn.cursor()
+        cursor.execute("""
+            SELECT
+                id,
+                reservation_time,
+                group_name,
+                players,
+                num_players,
+                walkers,
+                riders,
+                group_type,
+                front_course,
+                back_course,
+                rotation,
+                total_time,
+                average_hole,
+                display_order
+            FROM dbo.archived_tee_sheet_rows
+            WHERE archived_day_id = ?
+            ORDER BY display_order, id
+        """, (archived_day_id,))
+        rows = cursor.fetchall()
+
+    return [row_to_dict(r) for r in rows]
+
+
+def generate_archive_pdf(play_date_label, archived_rows, archive_id):
+    safe_date = re.sub(r"[^0-9A-Za-z_-]", "-", play_date_label or "unknown-date")
+    filename = f"archive_{safe_date}_{archive_id}.pdf"
+    filepath = PDF_FOLDER / filename
+
+    c = canvas.Canvas(str(filepath), pagesize=letter)
+    width, height = letter
+    top_margin = height - 50
+    y = top_margin
+
+    def draw_header():
+        nonlocal y
+        y = top_margin
+        c.setFont("Helvetica-Bold", 16)
+        c.drawCentredString(width / 2, y, "Tee Sheet Summary")
+
+        y -= 24
+        c.setFont("Helvetica", 11)
+        c.drawCentredString(width / 2, y, f"Date: {play_date_label}")
+
+        y -= 28
+        c.setFont("Helvetica-Bold", 9)
+        c.drawString(30, y, "Time")
+        c.drawString(78, y, "Group")
+        c.drawString(180, y, "Players")
+        c.drawString(470, y, "Pace")
+        c.drawString(525, y, "Avg/Hole")
+
+        y -= 14
+        c.line(30, y, width - 30, y)
+        y -= 14
+        c.setFont("Helvetica", 8)
+
+    draw_header()
+
+    for row in archived_rows:
+        group_name = (row.get("group_name") or "")[:20]
+        players = (row.get("players") or "")[:58]
+        tee_time = row.get("reservation_time") or ""
+        total_time = row.get("total_time") or ""
+        avg_hole = row.get("average_hole") or ""
+
+        if y < 55:
+            c.showPage()
+            draw_header()
+
+        c.drawString(30, y, tee_time)
+        c.drawString(78, y, group_name)
+        c.drawString(180, y, players)
+        c.drawString(470, y, total_time)
+        c.drawString(525, y, avg_hole)
+        y -= 14
+
+    c.save()
+    return filename
+
+
+def archive_active_sheet():
+    ensure_archive_tables()
+
+    active_sheet = get_active_sheet()
+    if not active_sheet:
+        return False, "No active tee sheet to archive."
+
+    sheet_id = active_sheet["id"]
+    rows = get_sheet_rows(sheet_id)
+
+    if not rows:
+        return False, "No rows found on the active tee sheet."
+
+    play_date_raw = active_sheet.get("sheet_date_raw")
+    if play_date_raw:
+        try:
+            play_date_label = play_date_raw.strftime("%B %d, %Y")
+        except AttributeError:
+            play_date_label = str(play_date_raw)
+    else:
+        play_date_label = datetime.now().strftime("%B %d, %Y")
+
+    title = f"Tee Sheet Summary - {play_date_label}"
+    source_filename = active_sheet.get("source_filename", "")
+
+    with get_connection() as conn:
+        cursor = conn.cursor()
+
+        cursor.execute("""
+            INSERT INTO dbo.archived_days (
+                original_sheet_id,
+                play_date,
+                title,
+                source_filename
+            )
+            OUTPUT INSERTED.id
+            VALUES (?, ?, ?, ?)
+        """, (
+            sheet_id,
+            play_date_raw if play_date_raw else datetime.now().date(),
+            title,
+            source_filename
+        ))
+
+        archived_day_id = cursor.fetchone()[0]
+
+        for idx, row in enumerate(rows):
+            cursor.execute("""
+                INSERT INTO dbo.archived_tee_sheet_rows (
+                    archived_day_id,
+                    reservation_time,
+                    group_name,
+                    players,
+                    num_players,
+                    walkers,
+                    riders,
+                    group_type,
+                    front_course,
+                    back_course,
+                    rotation,
+                    total_time,
+                    average_hole,
+                    display_order
+                )
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            """, (
+                archived_day_id,
+                row.get("reservation_time") or "",
+                row.get("group_name") or "",
+                row.get("players") or "",
+                int(row["num_players"]) if str(row.get("num_players", "")).isdigit() else None,
+                int(row["walkers"]) if str(row.get("walkers", "")).isdigit() else None,
+                int(row["riders"]) if str(row.get("riders", "")).isdigit() else None,
+                row.get("group_type") or "",
+                row.get("front") or "",
+                row.get("back") or "",
+                row.get("rotation") or "",
+                row.get("total_time") or "",
+                row.get("average_hole") or "",
+                idx
+            ))
+
+        conn.commit()
+
+    archived_rows = get_archived_rows(archived_day_id)
+    pdf_filename = generate_archive_pdf(play_date_label, archived_rows, archived_day_id)
+
+    with get_connection() as conn:
+        cursor = conn.cursor()
+
+        cursor.execute("""
+            UPDATE dbo.archived_days
+            SET summary_pdf = ?
+            WHERE id = ?
+        """, (pdf_filename, archived_day_id))
+
+        # Reset the live sheet by marking it inactive
+        cursor.execute("""
+            UPDATE dbo.tee_sheets
+            SET is_active = 0,
+                updated_at = GETDATE()
+            WHERE id = ?
+        """, (sheet_id,))
+
+        conn.commit()
+
+    return True, archived_day_id
 
 
 # ---------------- HELPERS ----------------
@@ -876,7 +1183,31 @@ def clear():
     return redirect("/")
 
 
+@app.route("/archive-day", methods=["POST"])
+def archive_day():
+    success, result = archive_active_sheet()
+
+    if not success:
+        flash(result, "warning")
+        return redirect("/tee-sheet")
+
+    flash("Day archived successfully. The live tee sheet has been reset.", "success")
+    return redirect(url_for("history"))
+
+
+@app.route("/history")
+def history():
+    archived_days = get_archived_days()
+    return render_template("history.html", archived_days=archived_days)
+
+
+@app.route("/archived-pdfs/<path:filename>")
+def archived_pdf(filename):
+    return send_from_directory(PDF_FOLDER, filename)
+
+
 # ---------------- RUN ----------------
 
 if __name__ == "__main__":
+    ensure_archive_tables()
     app.run(debug=True)
