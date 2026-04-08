@@ -75,6 +75,7 @@ def get_active_sheet():
         return None
 
     sheet_date = row[1]
+
     try:
         formatted_date = sheet_date.strftime("%B %d, %Y") if sheet_date else ""
     except AttributeError:
@@ -82,11 +83,11 @@ def get_active_sheet():
 
     return {
         "id": row[0],
+        "sheet_date": sheet_date,
         "date": formatted_date,
         "source_filename": row[2] or "",
         "updated_at": row[3]
     }
-
 
 def get_sheet_rows(sheet_id):
     with get_connection() as conn:
@@ -368,6 +369,9 @@ def save_archive_record(sheet):
         with get_connection() as conn:
             cursor = conn.cursor()
 
+            sheet_date = sheet.get("sheet_date")
+            formatted_date = sheet.get("date") or ""
+
             cursor.execute("""
                 INSERT INTO dbo.archive_records (
                     sheet_date,
@@ -376,14 +380,15 @@ def save_archive_record(sheet):
                 )
                 VALUES (?, ?, ?)
             """, (
-                sheet.get("date"),
-                sheet.get("source_filename"),
-                f"Tee Sheet - {sheet.get('date')}"
+                sheet_date,
+                sheet.get("source_filename") or "",
+                f"Tee Sheet - {formatted_date}" if formatted_date else "Tee Sheet Archive"
             ))
 
             conn.commit()
-    except Exception as e:
+        except Exception as e:
         print("Archive save error:", e)
+        raise
 
 
 def get_archive_records():
