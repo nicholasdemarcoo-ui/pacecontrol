@@ -520,7 +520,7 @@ def save_archive_record():
     pdf_url = upload_archive_pdf(pdf_bytes, filename)
 
     if not pdf_url:
-        raise ValueError("PDF upload failed: upload_archive_pdf returned no URL")
+        raise ValueError("upload_archive_pdf returned no URL")
 
     with get_connection() as conn:
         cursor = conn.cursor()
@@ -1012,12 +1012,7 @@ def extract_pdf_text(path):
 # ---------------- ROUTES ----------------
 @app.route("/archive/save-current", methods=["POST"])
 def archive_save_current():
-    try:
-        save_archive_record()
-    except Exception as e:
-        print("ARCHIVE SAVE ERROR:", e)
-        raise
-
+    save_archive_record()
     return redirect("/archive")
     
 @app.route("/")
