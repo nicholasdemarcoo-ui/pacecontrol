@@ -386,7 +386,7 @@ def save_archive_record(sheet):
             ))
 
             conn.commit()
-        except Exception as e:
+    except Exception as e:
         print("Archive save error:", e)
         raise
 
@@ -807,7 +807,7 @@ def archive_save_current():
     save_archive_record(sheet)
 
     return redirect("/archive")
-
+    
 @app.route("/")
 def home():
     data = load_data()
