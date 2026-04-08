@@ -363,7 +363,50 @@ def api_version():
 
 
 # ---------------- HELPERS ----------------
+def save_archive_record(sheet):
+    try:
+        with get_connection() as conn:
+            cursor = conn.cursor()
 
+            cursor.execute("""
+                INSERT INTO dbo.archive_records (
+                    sheet_date,
+                    source_filename,
+                    archive_name
+                )
+                VALUES (?, ?, ?)
+            """, (
+                sheet.get("date"),
+                sheet.get("source_filename"),
+                f"Tee Sheet - {sheet.get('date')}"
+            ))
+
+            conn.commit()
+    except Exception as e:
+        print("Archive save error:", e)
+
+
+def get_archive_records():
+    with get_connection() as conn:
+        cursor = conn.cursor()
+
+        cursor.execute("""
+            SELECT id, sheet_date, archive_name, saved_at
+            FROM dbo.archive_records
+            ORDER BY saved_at DESC
+        """)
+
+        rows = cursor.fetchall()
+
+    return [
+        {
+            "id": r[0],
+            "sheet_date": r[1],
+            "archive_name": r[2],
+            "saved_at": r[3]
+        }
+        for r in rows
+    ]
 def sort_rows_by_time(rows):
     def parse_time(row):
         value = (row.get("reservation_time") or "").strip()
@@ -749,6 +792,16 @@ def extract_pdf_text(path):
 
 
 # ---------------- ROUTES ----------------
+@app.route("/archive/save-current", methods=["POST"])
+def archive_save_current():
+    sheet = get_active_sheet()
+
+    if not sheet:
+        return redirect("/tee-sheet")
+
+    save_archive_record(sheet)
+
+    return redirect("/archive")
 
 @app.route("/")
 def home():
@@ -809,7 +862,8 @@ def tee_sheet():
 
 @app.route("/archive")
 def archive():
-    return render_template("archive.html")
+    records = get_archive_records()
+    return render_template("archive.html", records=records)
 
 
 @app.route("/add-reservation", methods=["POST"])

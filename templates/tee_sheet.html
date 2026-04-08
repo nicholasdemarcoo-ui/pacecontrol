@@ -588,7 +588,11 @@
                             <button class="btn btn-add" type="submit">Add Reservation</button>
                         </form>
 
-                    <a href="/archive" class="btn btn-add">Archive</a>
+                        <form action="/archive/save-current" method="POST">
+                            <button class="btn btn-add" type="submit">Save to Archive</button>
+                        </form> 
+
+                        <a href="/archive" class="btn btn-add">Archive</a>
 
                         <button class="btn btn-print" type="button" onclick="window.print()">Print</button>
                     </div>
