@@ -588,6 +588,8 @@
                             <button class="btn btn-add" type="submit">Add Reservation</button>
                         </form>
 
+                    <a href="/archive" class="btn btn-add">Archive</a>
+
                         <button class="btn btn-print" type="button" onclick="window.print()">Print</button>
                     </div>
                 </div>
@@ -718,10 +720,17 @@
         </div>
         {% else %}
         <div class="empty-state">
-            <form class="add-form" action="/add-reservation" method="POST" style="margin-bottom: 20px;">
-                <button class="btn btn-add" type="submit">Add Reservation</button>
-            </form>
+                    
+            <div class="top-bar" style="margin-bottom: 20px;">
+                <form class="add-form" action="/add-reservation" method="POST">
+                    <button class="btn btn-add" type="submit">Add Reservation</button>
+                </form>
+
+                <a href="/archive" class="btn btn-add">Archive</a>
+            </div>
+
             <p>No tee sheet has been uploaded yet.</p>
+
         </div>
         {% endif %}
     </div>
