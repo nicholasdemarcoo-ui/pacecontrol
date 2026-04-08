@@ -364,54 +364,58 @@ def api_version():
 
 
 # ---------------- HELPERS ----------------
-def save_archive_record(sheet):
-    try:
-        with get_connection() as conn:
-            cursor = conn.cursor()
+def save_archive_record():
+    sheet = get_active_sheet()
+    if not sheet:
+        return
 
-            sheet_date = sheet.get("sheet_date")
-            formatted_date = sheet.get("date") or ""
-
-            cursor.execute("""
-                INSERT INTO dbo.archive_records (
-                    sheet_date,
-                    source_filename,
-                    archive_name
-                )
-                VALUES (?, ?, ?)
-            """, (
+    with get_connection() as conn:
+        cursor = conn.cursor()
+        cursor.execute("""
+            INSERT INTO dbo.archive_records (
                 sheet_date,
-                sheet.get("source_filename") or "",
-                f"Tee Sheet - {formatted_date}" if formatted_date else "Tee Sheet Archive"
-            ))
-
-            conn.commit()
-    except Exception as e:
-        print("Archive save error:", e)
-        raise
+                source_filename,
+                archive_name
+            )
+            VALUES (
+                (SELECT TOP 1 sheet_date
+                 FROM dbo.tee_sheets
+                 WHERE is_active = 1
+                 ORDER BY updated_at DESC, id DESC),
+                ?,
+                ?
+            )
+        """, (
+            sheet.get("source_filename") or "",
+            f"Tee Sheet - {sheet.get('date')}" if sheet.get("date") else "Tee Sheet Archive"
+        ))
+        conn.commit()
 
 
 def get_archive_records():
     with get_connection() as conn:
         cursor = conn.cursor()
-
         cursor.execute("""
-            SELECT id, sheet_date, archive_name, saved_at
+            SELECT
+                id,
+                CONVERT(VARCHAR(50), sheet_date, 107) AS sheet_date_display,
+                archive_name,
+                CONVERT(VARCHAR(50), saved_at, 100) AS saved_at_display
             FROM dbo.archive_records
             ORDER BY saved_at DESC
         """)
-
         rows = cursor.fetchall()
 
     return [
         {
-            "id": r[0],
-            "sheet_date": r[1],
-            "archive_name": r[2],
-            "saved_at": r[3]
+            "id": row[0],
+            "sheet_date": row[1] or "",
+            "archive_name": row[2] or "",
+            "saved_at": row[3] or ""
         }
-        for r in rows
+        for row in rows
     ]
+
 def sort_rows_by_time(rows):
     def parse_time(row):
         value = (row.get("reservation_time") or "").strip()
@@ -799,13 +803,7 @@ def extract_pdf_text(path):
 # ---------------- ROUTES ----------------
 @app.route("/archive/save-current", methods=["POST"])
 def archive_save_current():
-    sheet = get_active_sheet()
-
-    if not sheet:
-        return redirect("/tee-sheet")
-
-    save_archive_record(sheet)
-
+    save_archive_record()
     return redirect("/archive")
     
 @app.route("/")
