@@ -459,15 +459,23 @@ def generate_archive_pdf_bytes(sheet, rows):
 
 
 def upload_archive_pdf(pdf_bytes, filename):
-    blob_service_client = get_blob_service_client()
+    connection_string = os.getenv("AZURE_STORAGE_CONNECTION_STRING")
     container_name = os.getenv("AZURE_STORAGE_CONTAINER", "archive")
 
-    blob_client = blob_service_client.get_blob_client(
-        container=container_name,
-        blob=filename
+    if not connection_string:
+        raise ValueError("AZURE_STORAGE_CONNECTION_STRING is missing")
+
+    from azure.storage.blob import BlobServiceClient
+
+    blob_service_client = BlobServiceClient.from_connection_string(connection_string)
+    blob_client = blob_service_client.get_blob_client(container=container_name, blob=filename)
+
+    blob_client.upload_blob(
+        pdf_bytes,
+        overwrite=True,
+        content_type="application/pdf"
     )
 
-    blob_client.upload_blob(pdf_bytes, overwrite=True, content_type="application/pdf")
     return blob_client.url
 
 
@@ -501,7 +509,7 @@ def get_archive_records():
 def save_archive_record():
     sheet = get_active_sheet()
     if not sheet:
-        return
+        raise ValueError("No active sheet found")
 
     rows = get_sheet_rows(sheet["id"])
 
@@ -510,6 +518,9 @@ def save_archive_record():
 
     pdf_bytes = generate_archive_pdf_bytes(sheet, rows)
     pdf_url = upload_archive_pdf(pdf_bytes, filename)
+
+    if not pdf_url:
+        raise ValueError("PDF upload failed: upload_archive_pdf returned no URL")
 
     with get_connection() as conn:
         cursor = conn.cursor()
@@ -1001,7 +1012,12 @@ def extract_pdf_text(path):
 # ---------------- ROUTES ----------------
 @app.route("/archive/save-current", methods=["POST"])
 def archive_save_current():
-    save_archive_record()
+    try:
+        save_archive_record()
+    except Exception as e:
+        print("ARCHIVE SAVE ERROR:", e)
+        raise
+
     return redirect("/archive")
     
 @app.route("/")
