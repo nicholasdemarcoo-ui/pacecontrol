@@ -520,7 +520,7 @@ def save_archive_record():
     pdf_url = upload_archive_pdf(pdf_bytes, filename)
 
     if not pdf_url:
-        raise ValueError("upload_archive_pdf returned no URL")
+        raise ValueError("PDF upload failed: upload_archive_pdf returned no URL")
 
     with get_connection() as conn:
         cursor = conn.cursor()
@@ -572,58 +572,6 @@ def get_archive_record_by_id(record_id):
         "source_filename": row[3] or "",
         "saved_at": row[4] or ""
     }
-
-def save_archive_record():
-    sheet = get_active_sheet()
-    if not sheet:
-        return
-
-    with get_connection() as conn:
-        cursor = conn.cursor()
-        cursor.execute("""
-            INSERT INTO dbo.archive_records (
-                sheet_date,
-                source_filename,
-                archive_name
-            )
-            VALUES (
-                (SELECT TOP 1 sheet_date
-                 FROM dbo.tee_sheets
-                 WHERE is_active = 1
-                 ORDER BY updated_at DESC, id DESC),
-                ?,
-                ?
-            )
-        """, (
-            sheet.get("source_filename") or "",
-            f"Tee Sheet - {sheet.get('date')}" if sheet.get("date") else "Tee Sheet Archive"
-        ))
-        conn.commit()
-
-
-def get_archive_records():
-    with get_connection() as conn:
-        cursor = conn.cursor()
-        cursor.execute("""
-            SELECT
-                id,
-                CONVERT(VARCHAR(50), sheet_date, 107) AS sheet_date_display,
-                archive_name,
-                CONVERT(VARCHAR(50), saved_at, 100) AS saved_at_display
-            FROM dbo.archive_records
-            ORDER BY saved_at DESC
-        """)
-        rows = cursor.fetchall()
-
-    return [
-        {
-            "id": row[0],
-            "sheet_date": row[1] or "",
-            "archive_name": row[2] or "",
-            "saved_at": row[3] or ""
-        }
-        for row in rows
-    ]
 
 def sort_rows_by_time(rows):
     def parse_time(row):
