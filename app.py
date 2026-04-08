@@ -379,16 +379,139 @@ def get_blob_service_client():
 
 
 def generate_archive_pdf_bytes(sheet, rows):
+    import io
+    from reportlab.lib import colors
+    from reportlab.lib.enums import TA_CENTER
+    from reportlab.lib.pagesizes import letter
+    from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
+    from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle
+
     buffer = io.BytesIO()
 
     doc = SimpleDocTemplate(
         buffer,
-        pagesize=landscape(letter),
-        leftMargin=20,
-        rightMargin=20,
-        topMargin=20,
-        bottomMargin=20
+        pagesize=letter,
+        leftMargin=12,
+        rightMargin=12,
+        topMargin=12,
+        bottomMargin=12
     )
+
+    styles = getSampleStyleSheet()
+
+    title_style = ParagraphStyle(
+        "ArchiveTitle",
+        parent=styles["Title"],
+        fontName="Helvetica-Bold",
+        fontSize=18,
+        leading=20,
+        alignment=TA_CENTER,
+        textColor=colors.black,
+        spaceAfter=4
+    )
+
+    subtitle_style = ParagraphStyle(
+        "ArchiveSubtitle",
+        parent=styles["Normal"],
+        fontName="Helvetica",
+        fontSize=9,
+        leading=10,
+        alignment=TA_CENTER,
+        textColor=colors.HexColor("#666666"),
+        spaceAfter=8
+    )
+
+    story = []
+
+    story.append(Paragraph("Tee Sheet Archive", title_style))
+    story.append(Paragraph(sheet.get("date") or "", subtitle_style))
+
+    total_groups = len(rows)
+    total_players = 0
+    for row in rows:
+        try:
+            total_players += int(row.get("num_players") or 0)
+        except Exception:
+            pass
+
+    summary_data = [[
+        f"Groups: {total_groups}",
+        f"Players: {total_players}"
+    ]]
+
+    summary_table = Table(summary_data, colWidths=[120, 120])
+    summary_table.setStyle(TableStyle([
+        ("BACKGROUND", (0, 0), (-1, -1), colors.HexColor("#f4f7fb")),
+        ("TEXTCOLOR", (0, 0), (-1, -1), colors.black),
+        ("FONTNAME", (0, 0), (-1, -1), "Helvetica-Bold"),
+        ("FONTSIZE", (0, 0), (-1, -1), 8),
+        ("ALIGN", (0, 0), (-1, -1), "CENTER"),
+        ("GRID", (0, 0), (-1, -1), 0.35, colors.HexColor("#cfd8e3")),
+        ("BOX", (0, 0), (-1, -1), 0.5, colors.HexColor("#cfd8e3")),
+        ("TOPPADDING", (0, 0), (-1, -1), 4),
+        ("BOTTOMPADDING", (0, 0), (-1, -1), 4),
+        ("LEFTPADDING", (0, 0), (-1, -1), 4),
+        ("RIGHTPADDING", (0, 0), (-1, -1), 4),
+    ]))
+    story.append(summary_table)
+    story.append(Spacer(1, 8))
+
+    table_data = [[
+        "Time",
+        "Group Name",
+        "Players",
+        "#",
+        "Rotation",
+        "Total"
+    ]]
+
+    for row in rows:
+        table_data.append([
+            row.get("reservation_time") or "",
+            row.get("group_name") or "",
+            row.get("players") or "",
+            row.get("num_players") or "",
+            row.get("rotation") or "",
+            row.get("total_time") or ""
+        ])
+
+    col_widths = [45, 95, 245, 25, 55, 45]
+
+    data_table = Table(table_data, colWidths=col_widths, repeatRows=1)
+    data_table.setStyle(TableStyle([
+        ("BACKGROUND", (0, 0), (-1, 0), colors.HexColor("#0b57d0")),
+        ("TEXTCOLOR", (0, 0), (-1, 0), colors.white),
+        ("FONTNAME", (0, 0), (-1, 0), "Helvetica-Bold"),
+        ("FONTSIZE", (0, 0), (-1, 0), 7.5),
+        ("ALIGN", (0, 0), (-1, 0), "CENTER"),
+
+        ("FONTNAME", (0, 1), (-1, -1), "Helvetica"),
+        ("FONTSIZE", (0, 1), (-1, -1), 6.5),
+
+        ("ROWBACKGROUNDS", (0, 1), (-1, -1), [
+            colors.white,
+            colors.HexColor("#f7f9fc")
+        ]),
+
+        ("GRID", (0, 0), (-1, -1), 0.3, colors.HexColor("#ccd6e0")),
+        ("BOX", (0, 0), (-1, -1), 0.5, colors.HexColor("#bcc8d6")),
+
+        ("ALIGN", (0, 1), (0, -1), "CENTER"),
+        ("ALIGN", (3, 1), (5, -1), "CENTER"),
+        ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
+
+        ("TOPPADDING", (0, 0), (-1, -1), 2),
+        ("BOTTOMPADDING", (0, 0), (-1, -1), 2),
+        ("LEFTPADDING", (0, 0), (-1, -1), 3),
+        ("RIGHTPADDING", (0, 0), (-1, -1), 3),
+    ]))
+
+    story.append(data_table)
+    doc.build(story)
+
+    pdf_bytes = buffer.getvalue()
+    buffer.close()
+    return pdf_bytes
 
     styles = getSampleStyleSheet()
     story = []
