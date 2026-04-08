@@ -807,6 +807,10 @@ def tee_sheet():
         player_count_options=player_count_options
     )
 
+@app.route("/archive")
+def archive():
+    return render_template("archive.html")
+
 
 @app.route("/add-reservation", methods=["POST"])
 def add_reservation():
