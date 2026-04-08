@@ -364,6 +364,32 @@ def api_version():
 
 
 # ---------------- HELPERS ----------------
+def get_archive_record_by_id(record_id):
+    with get_connection() as conn:
+        cursor = conn.cursor()
+        cursor.execute("""
+            SELECT
+                id,
+                CONVERT(VARCHAR(50), sheet_date, 107) AS sheet_date_display,
+                archive_name,
+                source_filename,
+                CONVERT(VARCHAR(50), saved_at, 100) AS saved_at_display
+            FROM dbo.archive_records
+            WHERE id = ?
+        """, (record_id,))
+        row = cursor.fetchone()
+
+    if not row:
+        return None
+
+    return {
+        "id": row[0],
+        "sheet_date": row[1] or "",
+        "archive_name": row[2] or "",
+        "source_filename": row[3] or "",
+        "saved_at": row[4] or ""
+    }
+
 def save_archive_record():
     sheet = get_active_sheet()
     if not sheet:
@@ -867,6 +893,15 @@ def tee_sheet():
 def archive():
     records = get_archive_records()
     return render_template("archive.html", records=records)
+
+@app.route("/archive/view/<int:record_id>")
+def archive_view(record_id):
+    record = get_archive_record_by_id(record_id)
+
+    if not record:
+        return redirect("/archive")
+
+    return render_template("archive_view.html", record=record)
 
 
 @app.route("/add-reservation", methods=["POST"])

@@ -1,0 +1,152 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Archive Record</title>
+
+    <style>
+        body {
+            margin: 0;
+            font-family: Arial, sans-serif;
+            background: #f7f7f7;
+            color: #222;
+        }
+
+        .nav-bar {
+            position: sticky;
+            top: 0;
+            width: 100%;
+            z-index: 100;
+            background: #0b57d0;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.12);
+        }
+
+        .nav-inner {
+            width: 100%;
+            margin: 0;
+            padding: 14px 20px;
+            display: flex;
+            align-items: center;
+            box-sizing: border-box;
+        }
+
+        .nav-left {
+            display: flex;
+            align-items: center;
+            gap: 14px;
+        }
+
+        .nav-title {
+            color: white;
+            font-size: 16px;
+            font-weight: bold;
+            margin-right: 8px;
+        }
+
+        .nav-link {
+            color: white;
+            text-decoration: none;
+            padding: 8px 14px;
+            border-radius: 999px;
+            background: rgba(255, 255, 255, 0.14);
+            font-size: 14px;
+        }
+
+        .nav-link:hover {
+            background: rgba(255, 255, 255, 0.24);
+        }
+
+        .page-shell {
+            max-width: 1000px;
+            margin: 0 auto;
+            padding: 40px 24px;
+            box-sizing: border-box;
+        }
+
+        .card {
+            background: white;
+            border-radius: 16px;
+            padding: 28px;
+            box-shadow: 0 4px 14px rgba(0, 0, 0, 0.08);
+        }
+
+        h1 {
+            margin-top: 0;
+            margin-bottom: 24px;
+            font-size: 42px;
+        }
+
+        .detail-row {
+            margin-bottom: 16px;
+            font-size: 16px;
+        }
+
+        .detail-label {
+            font-weight: bold;
+        }
+
+        .actions {
+            margin-top: 28px;
+            display: flex;
+            gap: 12px;
+        }
+
+        .btn {
+            display: inline-block;
+            padding: 10px 16px;
+            border-radius: 8px;
+            text-decoration: none;
+            border: none;
+            cursor: pointer;
+            font-size: 15px;
+        }
+
+        .btn-back {
+            background: #0b57d0;
+            color: white;
+        }
+
+        .btn-disabled {
+            background: #999;
+            color: white;
+            cursor: default;
+        }
+    </style>
+</head>
+<body>
+    <div class="nav-bar">
+        <div class="nav-inner">
+            <div class="nav-left">
+                <div class="nav-title">Pace Control</div>
+                <a href="/" class="nav-link">Home</a>
+                <a href="/tee-sheet" class="nav-link">Tee Sheet</a>
+                <a href="/archive" class="nav-link">Archive</a>
+            </div>
+        </div>
+    </div>
+
+    <div class="page-shell">
+        <div class="card">
+            <h1>{{ record.archive_name }}</h1>
+
+            <div class="detail-row">
+                <span class="detail-label">Tee Sheet Date:</span> {{ record.sheet_date }}
+            </div>
+
+            <div class="detail-row">
+                <span class="detail-label">Saved At:</span> {{ record.saved_at }}
+            </div>
+
+            <div class="detail-row">
+                <span class="detail-label">Source File:</span> {{ record.source_filename }}
+            </div>
+
+            <div class="actions">
+                <a href="/archive" class="btn btn-back">Back to Archive</a>
+                <span class="btn btn-disabled">PDF Coming Next</span>
+            </div>
+        </div>
+    </div>
+</body>
+</html>

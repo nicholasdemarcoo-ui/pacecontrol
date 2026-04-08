@@ -22,6 +22,22 @@
             box-shadow: 0 2px 10px rgba(0, 0, 0, 0.12);
         }
 
+        .btn {
+            display: inline-block;
+            padding: 8px 14px;
+            border-radius: 8px;
+            text-decoration: none;
+            border: none;
+            cursor: pointer;
+            font-size: 14px;
+            white-space: nowrap;
+        }
+
+        .btn-open {
+            background: #0b57d0;
+            color: white;
+        }
+
         .nav-inner {
             width: 100%;
             margin: 0;
@@ -112,7 +128,6 @@
     <div class="nav-bar">
         <div class="nav-inner">
             <div class="nav-left">
-                <div class="nav-title">Pace Control</div>
                 <a href="/" class="nav-link">Home</a>
                 <a href="/tee-sheet" class="nav-link">Tee Sheet</a>
                 <a href="/archive" class="nav-link active">Archive</a>
@@ -125,12 +140,13 @@
             <h1>Archive</h1>
             <p class="subtitle">Saved end-of-day tee sheet PDFs will live here.</p>
         {% if records and records|length > 0 %}
-        <table style="width:100%; border-collapse: collapse;">
+    <table style="width:100%; border-collapse: collapse;">
         <thead>
             <tr>
                 <th style="text-align:left; padding:10px;">Name</th>
                 <th style="text-align:left; padding:10px;">Date</th>
                 <th style="text-align:left; padding:10px;">Saved</th>
+                <th style="text-align:left; padding:10px;">Actions</th>
             </tr>
         </thead>
         <tbody>
@@ -139,6 +155,9 @@
                 <td style="padding:10px;">{{ r.archive_name }}</td>
                 <td style="padding:10px;">{{ r.sheet_date }}</td>
                 <td style="padding:10px;">{{ r.saved_at }}</td>
+                <td style="padding:10px;">
+                    <a href="/archive/view/{{ r.id }}" class="btn btn-open">View</a>
+                </td>
             </tr>
             {% endfor %}
         </tbody>
