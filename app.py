@@ -7,6 +7,13 @@ from dotenv import load_dotenv
 from flask import Flask, redirect, render_template, request, jsonify
 from mssql_python import connect
 
+import io
+from azure.storage.blob import BlobServiceClient
+from reportlab.lib import colors
+from reportlab.lib.pagesizes import landscape, letter
+from reportlab.lib.styles import getSampleStyleSheet
+from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle
+
 load_dotenv()
 
 app = Flask(__name__)
@@ -364,6 +371,171 @@ def api_version():
 
 
 # ---------------- HELPERS ----------------
+def get_blob_service_client():
+    connection_string = os.getenv("AZURE_STORAGE_CONNECTION_STRING")
+    if not connection_string:
+        raise ValueError("AZURE_STORAGE_CONNECTION_STRING is not set")
+    return BlobServiceClient.from_connection_string(connection_string)
+
+
+def generate_archive_pdf_bytes(sheet, rows):
+    buffer = io.BytesIO()
+
+    doc = SimpleDocTemplate(
+        buffer,
+        pagesize=landscape(letter),
+        leftMargin=20,
+        rightMargin=20,
+        topMargin=20,
+        bottomMargin=20
+    )
+
+    styles = getSampleStyleSheet()
+    story = []
+
+    title = f"Tee Sheet Archive - {sheet.get('date') or ''}"
+    story.append(Paragraph(title, styles["Title"]))
+    story.append(Spacer(1, 12))
+
+    summary_data = [
+        ["Sheet Date", sheet.get("date") or ""],
+        ["Source File", sheet.get("source_filename") or ""],
+        ["Saved From", "Pace Control"]
+    ]
+
+    summary_table = Table(summary_data, colWidths=[120, 300])
+    summary_table.setStyle(TableStyle([
+        ("BACKGROUND", (0, 0), (0, -1), colors.HexColor("#0b57d0")),
+        ("TEXTCOLOR", (0, 0), (0, -1), colors.white),
+        ("GRID", (0, 0), (-1, -1), 0.5, colors.grey),
+        ("FONTNAME", (0, 0), (-1, -1), "Helvetica-Bold"),
+        ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
+        ("PADDING", (0, 0), (-1, -1), 6),
+    ]))
+    story.append(summary_table)
+    story.append(Spacer(1, 18))
+
+    table_data = [[
+        "Time", "Group Name", "Players", "# Players",
+        "Walkers", "Riders", "Front", "Back",
+        "Rotation", "Total Time", "Average/Hole"
+    ]]
+
+    for row in rows:
+        table_data.append([
+            row.get("reservation_time") or "",
+            row.get("group_name") or "",
+            row.get("players") or "",
+            row.get("num_players") or "",
+            row.get("walkers") or "",
+            row.get("riders") or "",
+            row.get("front") or "",
+            row.get("back") or "",
+            row.get("rotation") or "",
+            row.get("total_time") or "",
+            row.get("average_hole") or ""
+        ])
+
+    col_widths = [60, 110, 220, 55, 55, 55, 45, 45, 70, 65, 65]
+
+    data_table = Table(table_data, colWidths=col_widths, repeatRows=1)
+    data_table.setStyle(TableStyle([
+        ("BACKGROUND", (0, 0), (-1, 0), colors.HexColor("#0b57d0")),
+        ("TEXTCOLOR", (0, 0), (-1, 0), colors.white),
+        ("FONTNAME", (0, 0), (-1, 0), "Helvetica-Bold"),
+        ("GRID", (0, 0), (-1, -1), 0.4, colors.grey),
+        ("VALIGN", (0, 0), (-1, -1), "TOP"),
+        ("FONTSIZE", (0, 0), (-1, -1), 8),
+        ("ROWBACKGROUNDS", (0, 1), (-1, -1), [colors.white, colors.HexColor("#f5f5f5")]),
+        ("PADDING", (0, 0), (-1, -1), 4),
+    ]))
+
+    story.append(data_table)
+    doc.build(story)
+
+    pdf_bytes = buffer.getvalue()
+    buffer.close()
+    return pdf_bytes
+
+
+def upload_archive_pdf(pdf_bytes, filename):
+    blob_service_client = get_blob_service_client()
+    container_name = os.getenv("AZURE_STORAGE_CONTAINER", "archive")
+
+    blob_client = blob_service_client.get_blob_client(
+        container=container_name,
+        blob=filename
+    )
+
+    blob_client.upload_blob(pdf_bytes, overwrite=True, content_type="application/pdf")
+    return blob_client.url
+
+
+def get_archive_records():
+    with get_connection() as conn:
+        cursor = conn.cursor()
+        cursor.execute("""
+            SELECT
+                id,
+                CONVERT(VARCHAR(50), sheet_date, 107) AS sheet_date_display,
+                archive_name,
+                CONVERT(VARCHAR(50), saved_at, 100) AS saved_at_display,
+                pdf_url
+            FROM dbo.archive_records
+            ORDER BY saved_at DESC
+        """)
+        rows = cursor.fetchall()
+
+    return [
+        {
+            "id": row[0],
+            "sheet_date": row[1] or "",
+            "archive_name": row[2] or "",
+            "saved_at": row[3] or "",
+            "pdf_url": row[4] or ""
+        }
+        for row in rows
+    ]
+
+
+def save_archive_record():
+    sheet = get_active_sheet()
+    if not sheet:
+        return
+
+    rows = get_sheet_rows(sheet["id"])
+
+    safe_date = (sheet.get("date") or "archive").replace(",", "").replace(" ", "_")
+    filename = f"tee_sheet_{safe_date}.pdf"
+
+    pdf_bytes = generate_archive_pdf_bytes(sheet, rows)
+    pdf_url = upload_archive_pdf(pdf_bytes, filename)
+
+    with get_connection() as conn:
+        cursor = conn.cursor()
+        cursor.execute("""
+            INSERT INTO dbo.archive_records (
+                sheet_date,
+                source_filename,
+                archive_name,
+                pdf_url
+            )
+            VALUES (
+                (SELECT TOP 1 sheet_date
+                 FROM dbo.tee_sheets
+                 WHERE is_active = 1
+                 ORDER BY updated_at DESC, id DESC),
+                ?,
+                ?,
+                ?
+            )
+        """, (
+            sheet.get("source_filename") or "",
+            f"Tee Sheet - {sheet.get('date')}" if sheet.get("date") else "Tee Sheet Archive",
+            pdf_url
+        ))
+        conn.commit()
+
 def get_archive_record_by_id(record_id):
     with get_connection() as conn:
         cursor = conn.cursor()
@@ -896,12 +1068,19 @@ def archive():
 
 @app.route("/archive/view/<int:record_id>")
 def archive_view(record_id):
-    record = get_archive_record_by_id(record_id)
+    with get_connection() as conn:
+        cursor = conn.cursor()
+        cursor.execute("""
+            SELECT pdf_url
+            FROM dbo.archive_records
+            WHERE id = ?
+        """, (record_id,))
+        row = cursor.fetchone()
 
-    if not record:
+    if not row or not row[0]:
         return redirect("/archive")
 
-    return render_template("archive_view.html", record=record)
+    return redirect(row[0])
 
 
 @app.route("/add-reservation", methods=["POST"])

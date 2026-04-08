@@ -3,3 +3,5 @@ PyMuPDF
 gunicorn
 python-dotenv
 mssql-python
+azure-storage-blob
+reportlab

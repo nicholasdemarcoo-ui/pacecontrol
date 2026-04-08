@@ -156,7 +156,11 @@
                 <td style="padding:10px;">{{ r.sheet_date }}</td>
                 <td style="padding:10px;">{{ r.saved_at }}</td>
                 <td style="padding:10px;">
-                    <a href="/archive/view/{{ r.id }}" class="btn btn-open">View</a>
+                    {% if r.pdf_url %}
+                        <a href="/archive/view/{{ r.id }}" class="btn btn-open" target="_blank">View</a>
+                    {% else %}
+                        <span style="color:#888;">No PDF</span>
+                    {% endif %}
                 </td>
             </tr>
             {% endfor %}
