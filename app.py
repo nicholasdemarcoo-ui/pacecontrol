@@ -371,6 +371,47 @@ def api_version():
 
 
 # ---------------- HELPERS ----------------
+def delete_archive_record(record_id):
+    with get_connection() as conn:
+        cursor = conn.cursor()
+
+        cursor.execute("""
+            SELECT pdf_url
+            FROM dbo.archive_records
+            WHERE id = ?
+        """, (record_id,))
+        row = cursor.fetchone()
+
+        if not row:
+            return
+
+        pdf_url = row[0] or ""
+
+        if pdf_url:
+            try:
+                connection_string = os.getenv("AZURE_STORAGE_CONNECTION_STRING")
+                container_name = os.getenv("AZURE_STORAGE_CONTAINER", "archive")
+
+                if connection_string:
+                    from azure.storage.blob import BlobServiceClient
+
+                    blob_service_client = BlobServiceClient.from_connection_string(connection_string)
+
+                    blob_name = pdf_url.split(f"/{container_name}/", 1)[-1]
+                    blob_client = blob_service_client.get_blob_client(
+                        container=container_name,
+                        blob=blob_name
+                    )
+                    blob_client.delete_blob()
+            except Exception as e:
+                print("DELETE ARCHIVE PDF ERROR:", e)
+
+        cursor.execute("""
+            DELETE FROM dbo.archive_records
+            WHERE id = ?
+        """, (record_id,))
+        conn.commit()
+
 def get_blob_service_client():
     connection_string = os.getenv("AZURE_STORAGE_CONNECTION_STRING")
     if not connection_string:
@@ -1081,6 +1122,11 @@ def extract_pdf_text(path):
 
 
 # ---------------- ROUTES ----------------
+@app.route("/archive/delete/<int:record_id>", methods=["POST"])
+def archive_delete(record_id):
+    delete_archive_record(record_id)
+    return redirect("/archive")
+
 @app.route("/archive/save-current", methods=["POST"])
 def archive_save_current():
     save_archive_record()
