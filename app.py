@@ -1177,13 +1177,10 @@ def tee_sheet():
     for row in rows:
         apply_derived_fields(row)
 
-    total_players = sum(int(row.get("players", 0)) for row in rows)
-
     edit_id = request.args.get("edit")
     edit_id = int(edit_id) if edit_id is not None else None
 
     summary = calculate_summary(rows)
-    summary["total_players"] = sum(int(row.get("# of Players", 0) or 0) for row in rows)
 
     return render_template(
         "tee_sheet.html",
@@ -1192,7 +1189,6 @@ def tee_sheet():
         summary=summary,
         edit_id=edit_id,
         player_count_options=player_count_options
-)
     )
 
 @app.route("/archive")
