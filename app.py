@@ -1012,10 +1012,7 @@ def calculate_summary(rows):
 
 return {
     "groups": len(rows),
-
-    # ✅ ADD THIS LINE
     "total_players": sum(int(r.get("num_players") or 0) for r in rows),
-
     "total_walkers": sum(int(r.get("walkers") or 0) for r in rows if str(r.get("walkers", "")).strip() != ""),
     "total_riders": sum(int(r.get("riders") or 0) for r in rows if str(r.get("riders", "")).strip() != ""),
     "fastest": fastest,
@@ -1024,11 +1021,10 @@ return {
     "slowest_name": slowest_name,
     "average": average,
     "cart_avg": cart_avg,
-    "walker_avg": walker_avg,
+    "walker_avg": walk_avg,
     "mixed_avg": mixed_avg,
     "rotation_pace": rotation_pace
 }
-
 
 def extract_pdf_text(path):
     rows = []
