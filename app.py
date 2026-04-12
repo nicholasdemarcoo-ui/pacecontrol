@@ -1145,8 +1145,11 @@ def home():
     )
 
 
-@app.route("/upload", methods=["POST"])
+@app.route("/upload", methods=["GET", "POST"])
 def upload():
+    if request.method == "GET":
+        return redirect("/")
+
     if "tee_sheet_pdf" not in request.files:
         return redirect("/")
 
@@ -1158,13 +1161,13 @@ def upload():
     temp_path = "temp.pdf"
     file.save(temp_path)
 
-    rows = extract_pdf_text(temp_path)
-
-    create_new_sheet(datetime.now().date(), file.filename, rows)
-    log_upload(file.filename)
-
-    if os.path.exists(temp_path):
-        os.remove(temp_path)
+    try:
+        rows = extract_pdf_text(temp_path)
+        create_new_sheet(datetime.now().date(), file.filename, rows)
+        log_upload(file.filename)
+    finally:
+        if os.path.exists(temp_path):
+            os.remove(temp_path)
 
     return redirect("/tee-sheet")
 
@@ -1292,3 +1295,4 @@ def clear():
 
 if __name__ == "__main__":
     app.run(debug=True)
+

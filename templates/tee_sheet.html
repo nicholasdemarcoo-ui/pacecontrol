@@ -185,6 +185,7 @@
         .body-table-wrap {
             overflow-x: auto;
             overflow-y: auto;
+            -webkit-overflow-scrolling: touch;
             flex: 1;
             min-height: 0;
 
@@ -646,23 +647,24 @@
                         {% if edit_id == loop.index0 %}
                         <tr id="row-{{ loop.index0 }}" class="editing-row">
                             <td class="col-actions">
-                                <form action="/save/{{ loop.index0 }}" method="POST">
+                                <form id="save-form-{{ loop.index0 }}" action="/save/{{ loop.index0 }}" method="POST" style="margin: 0;">
                                     <input type="hidden" name="scroll_top" class="scroll-top-input" value="0">
-                                    <div class="actions">
-                                        <button class="btn btn-save" type="submit">Save</button>
-                                        <a class="btn btn-cancel" href="/tee-sheet#row-{{ loop.index0 }}">Cancel</a>
-                                    </div>
+                                </form>
+                                <div class="actions">
+                                    <button class="btn btn-save" type="submit" form="save-form-{{ loop.index0 }}">Save</button>
+                                    <a class="btn btn-cancel" href="/tee-sheet#row-{{ loop.index0 }}">Cancel</a>
+                                </div>
                             </td>
                             <td class="col-time">
-                                <input type="text" name="reservation_time" value="{{ row.reservation_time }}" placeholder="9:05" class="time-input">
+                                <input type="text" name="reservation_time" value="{{ row.reservation_time }}" placeholder="9:05" class="time-input" form="save-form-{{ loop.index0 }}">
                             </td>
                             <td class="col-group">{{ row.group_name }}</td>
                             <td class="col-players">
-                                <input type="text" name="players" value="{{ row.players }}" placeholder="Smith, Jones, Brown, Kelly">
+                                <input type="text" name="players" value="{{ row.players }}" placeholder="Smith, Jones, Brown, Kelly" form="save-form-{{ loop.index0 }}">
                             </td>
                             <td class="col-count">{{ row.num_players }}</td>
                             <td class="col-walkers">
-                                <select name="walkers">
+                                <select name="walkers" form="save-form-{{ loop.index0 }}">
                                     <option value="" {% if row.walkers == "" %}selected{% endif %}></option>
                                     {% for n in player_count_options(row.num_players) %}
                                         <option value="{{ n }}" {% if row.walkers == n|string %}selected{% endif %}>{{ n }}</option>
@@ -672,7 +674,7 @@
                             <td class="col-riders">{{ row.riders if row.riders else "Auto" }}</td>
                             <td class="col-type">{{ row.group_type if row.group_type else "Auto" }}</td>
                             <td class="col-front">
-                                <select name="front" class="front-select">
+                                <select name="front" class="front-select" form="save-form-{{ loop.index0 }}">
                                     <option value="" {% if row.front == "" %}selected{% endif %}></option>
                                     <option value="South" {% if row.front == "South" %}selected{% endif %}>South</option>
                                     <option value="East" {% if row.front == "East" %}selected{% endif %}>East</option>
@@ -680,16 +682,15 @@
                                 </select>
                             </td>
                             <td class="col-back">
-                                <select name="back" class="back-select" data-current="{{ row.back }}">
+                                <select name="back" class="back-select" data-current="{{ row.back }}" form="save-form-{{ loop.index0 }}">
                                     <option value="" {% if row.back == "" %}selected{% endif %}></option>
                                 </select>
                             </td>
                             <td class="col-rotation">{{ row.rotation if row.rotation else "Auto" }}</td>
                             <td class="col-total">
-                                <input type="text" name="total_time" value="{{ row.total_time }}" placeholder="4:05" class="total-time-input">
+                                <input type="text" name="total_time" value="{{ row.total_time }}" placeholder="4:05" class="total-time-input" form="save-form-{{ loop.index0 }}">
                             </td>
                             <td class="col-average">{{ row.average_hole }}</td>
-                                </form>
                         </tr>
                         {% else %}
                         <tr id="row-{{ loop.index0 }}">
@@ -926,3 +927,4 @@ window.addEventListener("load", () => {
     </script>
 </body>
 </html>
+
