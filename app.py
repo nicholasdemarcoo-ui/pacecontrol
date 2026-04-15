@@ -1212,9 +1212,9 @@ def tee_sheet():
     summary = calculate_summary(rows)
 
     with get_connection() as conn:
-    cursor = conn.cursor()
-    cursor.execute("SELECT id, display_name FROM trackers WHERE is_active = 1")
-    trackers = cursor.fetchall()
+        cursor = conn.cursor()
+        cursor.execute("SELECT id, display_name FROM trackers WHERE is_active = 1")
+        trackers = cursor.fetchall()
 
     return render_template(
         "tee_sheet.html",
