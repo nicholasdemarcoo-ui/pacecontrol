@@ -1209,12 +1209,12 @@ def tee_sheet():
     edit_id = request.args.get("edit")
     edit_id = int(edit_id) if edit_id is not None else None
 
-    summary = calculate_summary(rows)
-
     with get_connection() as conn:
         cursor = conn.cursor()
         cursor.execute("SELECT id, display_name FROM trackers WHERE is_active = 1")
         trackers = cursor.fetchall()
+
+    summary = calculate_summary(rows)
 
     return render_template(
         "tee_sheet.html",
@@ -1222,10 +1222,10 @@ def tee_sheet():
         tee_sheet_date=data["date"],
         summary=summary,
         edit_id=edit_id,
-        player_count_options=player_count_options
+        player_count_options=player_count_options,
         trackers=trackers
     )
-
+    
 @app.route("/archive")
 def archive():
     records = get_archive_records()
