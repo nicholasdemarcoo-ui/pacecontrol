@@ -63,7 +63,7 @@ def row_to_dict(row):
         "rotation": row[10] or "",
         "total_time": row[11] or "",
         "average_hole": row[12] or "",
-        "display_order": row[13] if row[13] is not None else 0
+        "display_order": row[13] if row[13] is not None else 0,
         "tracker_id": row[14],
         "starting_course": row[15],
         "back_nine_course": row[16],
