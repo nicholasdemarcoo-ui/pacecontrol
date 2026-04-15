@@ -616,6 +616,7 @@
                             <th class="col-back">Back</th>
                             <th class="col-rotation">Rotation</th>
                             <th class="col-total">Total Time</th>
+                            <th class="col-total">Tracker</th>
                             <th class="col-average">Average/<wbr>Hole</th>
                         </tr>
                     </thead>
@@ -689,6 +690,16 @@
                             <td class="col-total">
                                 <input type="text" name="total_time" value="{{ row.total_time }}" placeholder="4:05" class="total-time-input" form="save-form-{{ loop.index0 }}">
                             </td>
+                            <td><select name="tracker_id" form="save-form-{{ loop.index0 }}">
+                                    <option value="">None</option>
+                                    {% for t in trackers %}
+                                        <option value="{{ t[0] }}"
+                                            {% if row.tracker_id == t[0] %}selected{% endif %}>
+                                            {{ t[1] }}
+                                        </option>
+                                    {% endfor %}
+                                </select>
+                            </td>
                             <td class="col-average">{{ row.average_hole }}</td>
                         </tr>
                         {% else %}
@@ -712,6 +723,13 @@
                             <td class="col-back">{{ row.back }}</td>
                             <td class="col-rotation">{{ row.rotation }}</td>
                             <td class="col-total">{{ row.total_time }}</td>
+                            <td>
+                                {% for t in trackers %}
+                                    {% if t[0] == row.tracker_id %}
+                                        {{ t[1] }}
+                                    {% endif %}
+                                {% endfor %}
+                            </td>
                             <td class="col-average">{{ row.average_hole }}</td>
                         </tr>
                         {% endif %}

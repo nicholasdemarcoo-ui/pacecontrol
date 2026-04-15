@@ -64,6 +64,18 @@ def row_to_dict(row):
         "total_time": row[11] or "",
         "average_hole": row[12] or "",
         "display_order": row[13] if row[13] is not None else 0
+        "tracker_id": row[14],
+        "starting_course": row[15],
+        "back_nine_course": row[16],
+        "course_rotation": row[17],
+        "front9_start_time": row[18],
+        "front9_finish_time": row[19],
+        "back9_start_time": row[20],
+        "back9_finish_time": row[21],
+        "front9_minutes": row[22],
+        "back9_minutes": row[23],
+        "turn_gap_minutes": row[24],
+        "playing_total_minutes": row[25],
     }
 
 
@@ -114,7 +126,19 @@ def get_sheet_rows(sheet_id):
                 rotation,
                 total_time,
                 average_hole,
-                display_order
+                display_order,
+                tracker_id,
+                starting_course,
+                back_nine_course,
+                course_rotation,
+                front9_start_time,
+                front9_finish_time,
+                back9_start_time,
+                back9_finish_time,
+                front9_minutes,
+                back9_minutes,
+                turn_gap_minutes,
+                playing_total_minutes
             FROM dbo.tee_sheet_rows
             WHERE tee_sheet_id = ?
             ORDER BY display_order, id
@@ -266,6 +290,7 @@ def save_sorted_rows(sheet_id, rows):
             cursor.execute("""
                 UPDATE dbo.tee_sheet_rows
                 SET display_order = ?,
+                    tracker_id = ?,
                     reservation_time = ?,
                     group_name = ?,
                     players = ?,
@@ -282,6 +307,7 @@ def save_sorted_rows(sheet_id, rows):
                 WHERE id = ? AND tee_sheet_id = ?
             """, (
                 idx,
+                row.get("tracker_id"),
                 row.get("reservation_time") or "",
                 row.get("group_name") or "",
                 row.get("players") or "",
@@ -1185,6 +1211,11 @@ def tee_sheet():
 
     summary = calculate_summary(rows)
 
+    with get_connection() as conn:
+    cursor = conn.cursor()
+    cursor.execute("SELECT id, display_name FROM trackers WHERE is_active = 1")
+    trackers = cursor.fetchall()
+
     return render_template(
         "tee_sheet.html",
         rows=rows,
@@ -1192,6 +1223,7 @@ def tee_sheet():
         summary=summary,
         edit_id=edit_id,
         player_count_options=player_count_options
+        trackers=trackers
     )
 
 @app.route("/archive")
@@ -1262,6 +1294,7 @@ def save(index):
     row["front"] = request.form.get("front", "").strip()
     row["back"] = request.form.get("back", "").strip()
     row["total_time"] = (request.form.get("total_time") or "").strip()
+    row["tracker_id"] = request.form.get("tracker_id")
 
     apply_derived_fields(row)
 
