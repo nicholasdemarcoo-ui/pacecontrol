@@ -608,6 +608,7 @@
                             <th class="col-time">Time</th>
                             <th class="col-group">Group Name</th>
                             <th class="col-players">Players</th>
+                            <th class="col-tracker">Tracker</th>        
                             <th class="col-count"># of Players</th>
                             <th class="col-walkers">Walkers</th>
                             <th class="col-riders">Riders</th>
@@ -616,7 +617,6 @@
                             <th class="col-back">Back</th>
                             <th class="col-rotation">Rotation</th>
                             <th class="col-total">Total Time</th>
-                            <th class="col-total">Tracker</th>
                             <th class="col-average">Average/<wbr>Hole</th>
                         </tr>
                     </thead>
@@ -662,6 +662,16 @@
                             <td class="col-players">
                                 <input type="text" name="players" value="{{ row.players }}" placeholder="Smith, Jones, Brown, Kelly" form="save-form-{{ loop.index0 }}">
                             </td>
+                             <td><select name="tracker_id" form="save-form-{{ loop.index0 }}">
+                                    <option value="">None</option>
+                                    {% for t in trackers %}
+                                        <option value="{{ t[0] }}"
+                                            {% if row.tracker_id == t[0] %}selected{% endif %}>
+                                            {{ t[1] }}
+                                        </option>
+                                    {% endfor %}
+                                </select>
+                            </td>
                             <td class="col-count">{{ row.num_players }}</td>
                             <td class="col-walkers">
                                 <select name="walkers" form="save-form-{{ loop.index0 }}">
@@ -690,16 +700,6 @@
                             <td class="col-total">
                                 <input type="text" name="total_time" value="{{ row.total_time }}" placeholder="4:05" class="total-time-input" form="save-form-{{ loop.index0 }}">
                             </td>
-                            <td><select name="tracker_id" form="save-form-{{ loop.index0 }}">
-                                    <option value="">None</option>
-                                    {% for t in trackers %}
-                                        <option value="{{ t[0] }}"
-                                            {% if row.tracker_id == t[0] %}selected{% endif %}>
-                                            {{ t[1] }}
-                                        </option>
-                                    {% endfor %}
-                                </select>
-                            </td>
                             <td class="col-average">{{ row.average_hole }}</td>
                         </tr>
                         {% else %}
@@ -715,6 +715,13 @@
                             <td class="col-time">{{ row.reservation_time }}</td>
                             <td class="col-group">{{ row.group_name }}</td>
                             <td class="col-players">{{ row.players }}</td>
+                            <td class="col-tracker">
+                                {% for t in trackers %}
+                                    {% if t[0] == row.tracker_id %}
+                                        {{ t[1] }}
+                                    {% endif %}
+                                {% endfor %}
+                            </td>  
                             <td class="col-count">{{ row.num_players }}</td>
                             <td class="col-walkers">{{ row.walkers }}</td>
                             <td class="col-riders">{{ row.riders }}</td>
@@ -723,13 +730,6 @@
                             <td class="col-back">{{ row.back }}</td>
                             <td class="col-rotation">{{ row.rotation }}</td>
                             <td class="col-total">{{ row.total_time }}</td>
-                            <td>
-                                {% for t in trackers %}
-                                    {% if t[0] == row.tracker_id %}
-                                        {{ t[1] }}
-                                    {% endif %}
-                                {% endfor %}
-                            </td>
                             <td class="col-average">{{ row.average_hole }}</td>
                         </tr>
                         {% endif %}
