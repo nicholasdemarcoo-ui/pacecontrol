@@ -661,8 +661,8 @@
                             <td class="col-group">{{ row.group_name }}</td>
                             <td class="col-players">
                                 <input type="text" name="players" value="{{ row.players }}" placeholder="Smith, Jones, Brown, Kelly" form="save-form-{{ loop.index0 }}">
-                            </td>
-                             <td><select name="tracker_id" form="save-form-{{ loop.index0 }}">
+                            <td class="col-tracker tracker-cell">
+                                <select name="tracker_id" form="save-form-{{ loop.index0 }}" class="tracker-select">
                                     <option value="">None</option>
                                     {% for t in trackers %}
                                         <option value="{{ t[0] }}"
@@ -670,7 +670,7 @@
                                             {{ t[1] }}
                                         </option>
                                     {% endfor %}
-                                </select>
+                                </select>   
                             </td>
                             <td class="col-count">{{ row.num_players }}</td>
                             <td class="col-walkers">
