@@ -21,26 +21,6 @@
             background: #0b57d0;
             box-shadow: 0 2px 10px rgba(0, 0, 0, 0.12);
         }
-        .btn-delete {
-            background: #c62828;
-            color: white;
-        }
-
-        .btn {
-            display: inline-block;
-            padding: 8px 14px;
-            border-radius: 8px;
-            text-decoration: none;
-            border: none;
-            cursor: pointer;
-            font-size: 14px;
-            white-space: nowrap;
-        }
-
-        .btn-open {
-            background: #0b57d0;
-            color: white;
-        }
 
         .nav-inner {
             width: 100%;
@@ -55,13 +35,6 @@
             display: flex;
             align-items: center;
             gap: 14px;
-        }
-
-        .nav-title {
-            color: white;
-            font-size: 16px;
-            font-weight: bold;
-            margin-right: 8px;
         }
 
         .nav-link {
@@ -85,6 +58,7 @@
         .page-shell {
             width: 100%;
             box-sizing: border-box;
+            padding: 24px;
         }
 
         .card {
@@ -92,6 +66,8 @@
             border-radius: 16px;
             padding: 28px;
             box-shadow: 0 4px 14px rgba(0, 0, 0, 0.08);
+            max-width: 1200px;
+            margin: 0 auto;
         }
 
         h1 {
@@ -104,6 +80,109 @@
             margin: 0 0 24px 0;
             color: #666;
             font-size: 16px;
+        }
+
+        .archive-list {
+            display: flex;
+            flex-direction: column;
+            gap: 18px;
+        }
+
+        .archive-item {
+            border: 1px solid #dfe4ea;
+            border-radius: 14px;
+            background: #fff;
+            overflow: hidden;
+        }
+
+        .archive-main {
+            display: grid;
+            grid-template-columns: 2fr 1fr 1fr auto;
+            gap: 16px;
+            align-items: center;
+            padding: 18px 20px;
+            border-bottom: 1px solid #eef2f5;
+        }
+
+        .archive-title {
+            font-size: 20px;
+            font-weight: bold;
+            margin-bottom: 4px;
+        }
+
+        .archive-meta-label {
+            font-size: 12px;
+            text-transform: uppercase;
+            letter-spacing: 0.04em;
+            color: #7a7a7a;
+            margin-bottom: 4px;
+        }
+
+        .archive-meta-value {
+            font-size: 15px;
+            color: #222;
+        }
+
+        .archive-actions {
+            display: flex;
+            gap: 8px;
+            align-items: center;
+            justify-content: flex-end;
+            flex-wrap: wrap;
+        }
+
+        .btn {
+            display: inline-block;
+            padding: 8px 14px;
+            border-radius: 8px;
+            text-decoration: none;
+            border: none;
+            cursor: pointer;
+            font-size: 14px;
+            white-space: nowrap;
+        }
+
+        .btn-open {
+            background: #0b57d0;
+            color: white;
+        }
+
+        .btn-delete {
+            background: #c62828;
+            color: white;
+        }
+
+        .summary-wrap {
+            padding: 18px 20px 20px 20px;
+            background: #fafbfd;
+        }
+
+        .summary-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr 1fr;
+            gap: 14px;
+        }
+
+        .summary-box {
+            background: white;
+            border: 1px solid #e3e8ee;
+            border-radius: 12px;
+            padding: 14px 16px;
+        }
+
+        .summary-box h3 {
+            margin: 0 0 10px 0;
+            font-size: 16px;
+        }
+
+        .summary-line {
+            font-size: 14px;
+            line-height: 1.45;
+            margin-bottom: 6px;
+        }
+
+        .summary-line:last-child {
+            margin-bottom: 0;
         }
 
         .empty-state {
@@ -126,6 +205,21 @@
             font-size: 15px;
             line-height: 1.5;
         }
+
+        @media (max-width: 900px) {
+            .archive-main {
+                grid-template-columns: 1fr;
+                gap: 12px;
+            }
+
+            .archive-actions {
+                justify-content: flex-start;
+            }
+
+            .summary-grid {
+                grid-template-columns: 1fr;
+            }
+        }
     </style>
 </head>
 <body>
@@ -142,51 +236,91 @@
     <div class="page-shell">
         <div class="card">
             <h1>Archive</h1>
-            <p class="subtitle">Saved end-of-day tee sheet PDFs will live here.</p>
-        {% if records and records|length > 0 %}
-    <table style="width:100%; border-collapse: collapse;">
-        <thead>
-            <tr>
-                <th style="text-align:left; padding:10px;">Name</th>
-                <th style="text-align:left; padding:10px;">Date</th>
-                <th style="text-align:left; padding:10px;">Saved</th>
-                <th style="text-align:left; padding:10px;">Actions</th>
-            </tr>
-        </thead>
-        <tbody>
-            {% for r in records %}
-            <tr>
-                <td style="padding:10px;">{{ r.archive_name }}</td>
-                <td style="padding:10px;">{{ r.sheet_date }}</td>
-                <td style="padding:10px;">{{ r.saved_at }}</td>
-                <td style="padding:10px;">
-                     <div style="display:flex; gap:8px; align-items:center;">
-                     {% if r.pdf_url %}
-                 <a href="/archive/view/{{ r.id }}" class="btn btn-open" target="_blank">View</a>
-                    {% else %}
-                        <span style="color:#888;">No PDF</span>
-                        {% endif %}
+            <p class="subtitle">Saved end-of-day tee sheets and summary data live here.</p>
 
-                        <form action="/archive/delete/{{ r.id }}" method="POST" style="margin:0;">
-                         <button
-                type="submit"
-                class="btn btn-delete"
-                onclick="return confirm('Delete this archived PDF and record?')">
-                Delete
-            </button>
-        </form>
-    </div>
-</td>
-            </tr>
-            {% endfor %}
-        </tbody>
-    </table>
-{% else %}
-    <div class="empty-state">
-        <h2>No archived tee sheets yet</h2>
-        <p>Click "Save to Archive" on the Tee Sheet page to save one.</p>
-    </div>
-{% endif %}
+            {% if records and records|length > 0 %}
+                <div class="archive-list">
+                    {% for r in records %}
+                    <div class="archive-item">
+                        <div class="archive-main">
+                            <div>
+                                <div class="archive-title">{{ r.archive_name }}</div>
+                            </div>
+
+                            <div>
+                                <div class="archive-meta-label">Date</div>
+                                <div class="archive-meta-value">{{ r.sheet_date }}</div>
+                            </div>
+
+                            <div>
+                                <div class="archive-meta-label">Saved</div>
+                                <div class="archive-meta-value">{{ r.saved_at }}</div>
+                            </div>
+
+                            <div class="archive-actions">
+                                {% if r.pdf_url %}
+                                    <a href="/archive/view/{{ r.id }}" class="btn btn-open" target="_blank">View PDF</a>
+                                {% else %}
+                                    <span style="color:#888;">No PDF</span>
+                                {% endif %}
+
+                                <form action="/archive/delete/{{ r.id }}" method="POST" style="margin:0;">
+                                    <button
+                                        type="submit"
+                                        class="btn btn-delete"
+                                        onclick="return confirm('Delete this archived PDF and record?')">
+                                        Delete
+                                    </button>
+                                </form>
+                            </div>
+                        </div>
+
+                        <div class="summary-wrap">
+                            <div class="summary-grid">
+                                <div class="summary-box">
+                                    <h3>Totals</h3>
+                                    <div class="summary-line"><strong>Groups:</strong> {{ r.total_groups }}</div>
+                                    <div class="summary-line"><strong>Players:</strong> {{ r.total_players }}</div>
+                                    <div class="summary-line"><strong>Walkers:</strong> {{ r.total_walkers }}</div>
+                                    <div class="summary-line"><strong>Riders:</strong> {{ r.total_riders }}</div>
+                                </div>
+
+                                <div class="summary-box">
+                                    <h3>Pace Summary</h3>
+                                    <div class="summary-line">
+                                        <strong>Fastest:</strong>
+                                        {{ r.fastest_round }}{% if r.fastest_name %} ({{ r.fastest_name }}){% endif %}
+                                    </div>
+                                    <div class="summary-line">
+                                        <strong>Slowest:</strong>
+                                        {{ r.slowest_round }}{% if r.slowest_name %} ({{ r.slowest_name }}){% endif %}
+                                    </div>
+                                    <div class="summary-line"><strong>Average Pace:</strong> {{ r.average_pace }}</div>
+                                    <div class="summary-line"><strong>Cart Avg:</strong> {{ r.cart_avg }}</div>
+                                    <div class="summary-line"><strong>Walk Avg:</strong> {{ r.walker_avg }}</div>
+                                    <div class="summary-line"><strong>Mixed Avg:</strong> {{ r.mixed_avg }}</div>
+                                </div>
+
+                                <div class="summary-box">
+                                    <h3>Course Rotation Pace</h3>
+                                    <div class="summary-line"><strong>East-West:</strong> {{ r.east_west }}</div>
+                                    <div class="summary-line"><strong>East-South:</strong> {{ r.east_south }}</div>
+                                    <div class="summary-line"><strong>South-East:</strong> {{ r.south_east }}</div>
+                                    <div class="summary-line"><strong>South-West:</strong> {{ r.south_west }}</div>
+                                    <div class="summary-line"><strong>West-East:</strong> {{ r.west_east }}</div>
+                                    <div class="summary-line"><strong>West-South:</strong> {{ r.west_south }}</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+            {% else %}
+                <div class="empty-state">
+                    <h2>No archived tee sheets yet</h2>
+                    <p>Click "Save to Archive" on the Tee Sheet page to save one.</p>
+                </div>
+            {% endif %}
         </div>
     </div>
 </body>

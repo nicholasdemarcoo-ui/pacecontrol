@@ -698,7 +698,25 @@ def get_archive_records():
                 CONVERT(VARCHAR(50), sheet_date, 107) AS sheet_date_display,
                 archive_name,
                 CONVERT(VARCHAR(50), saved_at, 100) AS saved_at_display,
-                pdf_url
+                pdf_url,
+                total_groups,
+                total_players,
+                total_walkers,
+                total_riders,
+                fastest_round,
+                fastest_name,
+                slowest_round,
+                slowest_name,
+                average_pace,
+                cart_avg,
+                walker_avg,
+                mixed_avg,
+                east_west,
+                east_south,
+                south_east,
+                south_west,
+                west_east,
+                west_south
             FROM dbo.archive_records
             ORDER BY saved_at DESC
         """)
@@ -710,7 +728,25 @@ def get_archive_records():
             "sheet_date": row[1] or "",
             "archive_name": row[2] or "",
             "saved_at": row[3] or "",
-            "pdf_url": row[4] or ""
+            "pdf_url": row[4] or "",
+            "total_groups": row[5] if row[5] is not None else "",
+            "total_players": row[6] if row[6] is not None else "",
+            "total_walkers": row[7] if row[7] is not None else "",
+            "total_riders": row[8] if row[8] is not None else "",
+            "fastest_round": row[9] or "",
+            "fastest_name": row[10] or "",
+            "slowest_round": row[11] or "",
+            "slowest_name": row[12] or "",
+            "average_pace": row[13] or "",
+            "cart_avg": row[14] or "",
+            "walker_avg": row[15] or "",
+            "mixed_avg": row[16] or "",
+            "east_west": row[17] or "",
+            "east_south": row[18] or "",
+            "south_east": row[19] or "",
+            "south_west": row[20] or "",
+            "west_east": row[21] or "",
+            "west_south": row[22] or ""
         }
         for row in rows
     ]
@@ -722,7 +758,11 @@ def save_archive_record():
         raise ValueError("No active sheet found")
 
     rows = get_sheet_rows(sheet["id"])
+
+    # Sort archive PDF rows A-Z by Group Name
     rows = sorted(rows, key=lambda r: (r.get("group_name") or "").strip().lower())
+
+    summary = calculate_summary(rows)
 
     safe_date = (sheet.get("date") or "archive").replace(",", "").replace(" ", "_")
     filename = f"tee_sheet_{safe_date}.pdf"
@@ -740,21 +780,55 @@ def save_archive_record():
                 sheet_date,
                 source_filename,
                 archive_name,
-                pdf_url
+                pdf_url,
+                total_groups,
+                total_players,
+                total_walkers,
+                total_riders,
+                fastest_round,
+                fastest_name,
+                slowest_round,
+                slowest_name,
+                average_pace,
+                cart_avg,
+                walker_avg,
+                mixed_avg,
+                east_west,
+                east_south,
+                south_east,
+                south_west,
+                west_east,
+                west_south
             )
             VALUES (
                 (SELECT TOP 1 sheet_date
                  FROM dbo.tee_sheets
                  WHERE is_active = 1
                  ORDER BY updated_at DESC, id DESC),
-                ?,
-                ?,
-                ?
+                ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?
             )
         """, (
             sheet.get("source_filename") or "",
             f"Tee Sheet - {sheet.get('date')}" if sheet.get("date") else "Tee Sheet Archive",
-            pdf_url
+            pdf_url,
+            summary.get("groups"),
+            summary.get("total_players"),
+            summary.get("total_walkers"),
+            summary.get("total_riders"),
+            summary.get("fastest"),
+            summary.get("fastest_name"),
+            summary.get("slowest"),
+            summary.get("slowest_name"),
+            summary.get("average"),
+            summary.get("cart_avg"),
+            summary.get("walker_avg"),
+            summary.get("mixed_avg"),
+            summary["rotation_pace"].get("East-West"),
+            summary["rotation_pace"].get("East-South"),
+            summary["rotation_pace"].get("South-East"),
+            summary["rotation_pace"].get("South-West"),
+            summary["rotation_pace"].get("West-East"),
+            summary["rotation_pace"].get("West-South")
         ))
         conn.commit()
 
@@ -767,7 +841,26 @@ def get_archive_record_by_id(record_id):
                 CONVERT(VARCHAR(50), sheet_date, 107) AS sheet_date_display,
                 archive_name,
                 source_filename,
-                CONVERT(VARCHAR(50), saved_at, 100) AS saved_at_display
+                CONVERT(VARCHAR(50), saved_at, 100) AS saved_at_display,
+                pdf_url,
+                total_groups,
+                total_players,
+                total_walkers,
+                total_riders,
+                fastest_round,
+                fastest_name,
+                slowest_round,
+                slowest_name,
+                average_pace,
+                cart_avg,
+                walker_avg,
+                mixed_avg,
+                east_west,
+                east_south,
+                south_east,
+                south_west,
+                west_east,
+                west_south
             FROM dbo.archive_records
             WHERE id = ?
         """, (record_id,))
@@ -781,7 +874,26 @@ def get_archive_record_by_id(record_id):
         "sheet_date": row[1] or "",
         "archive_name": row[2] or "",
         "source_filename": row[3] or "",
-        "saved_at": row[4] or ""
+        "saved_at": row[4] or "",
+        "pdf_url": row[5] or "",
+        "total_groups": row[6] if row[6] is not None else "",
+        "total_players": row[7] if row[7] is not None else "",
+        "total_walkers": row[8] if row[8] is not None else "",
+        "total_riders": row[9] if row[9] is not None else "",
+        "fastest_round": row[10] or "",
+        "fastest_name": row[11] or "",
+        "slowest_round": row[12] or "",
+        "slowest_name": row[13] or "",
+        "average_pace": row[14] or "",
+        "cart_avg": row[15] or "",
+        "walker_avg": row[16] or "",
+        "mixed_avg": row[17] or "",
+        "east_west": row[18] or "",
+        "east_south": row[19] or "",
+        "south_east": row[20] or "",
+        "south_west": row[21] or "",
+        "west_east": row[22] or "",
+        "west_south": row[23] or ""
     }
 
 def sort_rows_by_time(rows):
