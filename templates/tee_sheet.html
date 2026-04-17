@@ -24,11 +24,11 @@
             z-index: 100;
             background: #0b57d0;
             box-shadow: 0 2px 10px rgba(0, 0, 0, 0.12);
-        }  
+        }
 
         .nav-inner {
             width: 100%;
-            margin: 0;                 /* 👈 REMOVE centering */
+            margin: 0;
             padding: 14px 20px;
             display: flex;
             align-items: center;
@@ -182,14 +182,12 @@
             padding: 16px;
             border-radius: 12px;
             box-shadow: 0 2px 10px rgba(0, 0, 0, 0.08);
-
             flex: 1;
             display: flex;
             flex-direction: column;
             overflow: hidden;
             min-height: 0;
-
-            padding-bottom: 10px; /* 👈 ADD THIS */
+            padding-bottom: 10px;
         }
 
         .header-table-wrap {
@@ -204,8 +202,7 @@
             -webkit-overflow-scrolling: touch;
             flex: 1;
             min-height: 0;
-
-            padding-bottom: 20px; /* 👈 ADD THIS */
+            padding-bottom: 20px;
         }
 
         .empty-state {
@@ -304,7 +301,8 @@
         .add-form {
             margin: 0;
         }
-        .col-tracker {width: 100px;}  
+
+        .col-tracker { width: 100px; }
         .col-actions { width: 135px; }
         .col-time { width: 90px; }
         .col-group { width: 150px; }
@@ -317,7 +315,7 @@
         .col-back { width: 75px; }
         .col-rotation { width: 104px; }
         .col-total { width: 87px; }
-        .col-average { width: 90px; display: none;}
+        .col-average { width: 90px; display: none; }
 
         .col-count,
         .col-tracker,
@@ -409,21 +407,52 @@
         }
 
         @media print {
+            @page {
+                size: portrait;
+                margin: 0.35in;
+            }
+
+            html, body {
+                height: auto !important;
+                overflow: visible !important;
+                background: white !important;
+            }
+
             body {
-                margin: 0;
-                padding: 0;
-                background: white;
+                margin: 0 !important;
+                padding: 0 !important;
+                color: #000 !important;
+                font-family: Arial, sans-serif;
+                -webkit-print-color-adjust: exact;
+                print-color-adjust: exact;
+            }
+
+            .nav-bar,
+            .top-bar,
+            .btn,
+            form,
+            .header-table-wrap,
+            .body-table-wrap::after,
+            .empty-state {
+                display: none !important;
             }
 
             .page-shell {
-                width: 100%;
-                max-width: 100%;
-                padding: 0;
-                margin: 0 auto;
+                height: auto !important;
+                width: 100% !important;
+                max-width: 100% !important;
+                padding: 0 !important;
+                margin: 0 !important;
+                display: block !important;
             }
 
             .sticky-header {
-                position: static;
+                position: static !important;
+                top: auto !important;
+                background: white !important;
+                border-bottom: none !important;
+                padding: 0 !important;
+                margin: 0 0 10px 0 !important;
             }
 
             .top-row {
@@ -431,57 +460,126 @@
             }
 
             .print-cover {
-                display: block;
-                page-break-after: always;
+                display: block !important;
+                page-break-after: avoid !important;
+                margin: 0 0 12px 0 !important;
             }
 
-            .body-table-wrap {
-                max-height: none !important;
+            .print-cover h1 {
+                font-size: 24px !important;
+                line-height: 1.1 !important;
+                text-align: center !important;
+                margin: 0 0 4px 0 !important;
+            }
+
+            .print-cover .cover-date {
+                font-size: 14px !important;
+                color: #444 !important;
+                text-align: center !important;
+                margin: 0 0 12px 0 !important;
+            }
+
+            .print-grid {
+                display: grid !important;
+                grid-template-columns: 1fr 1fr !important;
+                gap: 12px !important;
+                margin: 0 0 10px 0 !important;
+            }
+
+            .print-section {
+                border: 1px solid #cfcfcf !important;
+                border-radius: 0 !important;
+                padding: 8px 10px !important;
+                break-inside: avoid !important;
+                page-break-inside: avoid !important;
+            }
+
+            .print-section h2 {
+                font-size: 14px !important;
+                margin: 0 0 6px 0 !important;
+            }
+
+            .print-line {
+                font-size: 11px !important;
+                line-height: 1.25 !important;
+                margin-bottom: 4px !important;
+            }
+
+            .rotation-list {
+                margin-top: 10px !important;
+            }
+
+            .print-rotation-grid {
+                display: grid !important;
+                grid-template-columns: repeat(3, 1fr) !important;
+                gap: 10px !important;
+                margin-top: 8px !important;
+                text-align: center !important;
+            }
+
+            .rotation-col {
+                gap: 4px !important;
+            }
+
+            .rotation-title {
+                font-size: 12px !important;
+                margin-bottom: 2px !important;
+                padding-bottom: 2px !important;
+            }
+
+            .table-shell {
+                box-shadow: none !important;
+                border-radius: 0 !important;
+                background: white !important;
+                margin: 0 !important;
+                padding: 0 !important;
+                display: block !important;
                 overflow: visible !important;
             }
 
-            .header-table-wrap {
-                display: none !important;
+            .body-table-wrap {
+                overflow: visible !important;
+                max-height: none !important;
+                padding: 0 !important;
+                margin: 0 !important;
+            }
+
+            .body-table {
+                width: 100% !important;
+                table-layout: fixed !important;
+                border-collapse: collapse !important;
+                font-size: 9.5px !important;
+                margin: 0 !important;
             }
 
             .print-body-head {
                 display: table-header-group !important;
             }
 
-            .table-shell {
-                box-shadow: none;
-                padding: 0;
-                margin-top: 0;
-            }
-
-            .btn,
-            .top-bar form,
-            .top-bar button,
-            form {
-                display: none !important;
-            }
-
-            table {
-                width: 100% !important;
-                min-width: 0 !important;
-                table-layout: fixed !important;
-                border-collapse: collapse;
-                font-size: 11px;
-                margin: 0 auto;
-            }
-
             th,
             td {
-                padding: 6px;
-                text-align: center;
-                vertical-align: middle;
+                border: 1px solid #bdbdbd !important;
+                padding: 3px 4px !important;
+                vertical-align: middle !important;
+                box-sizing: border-box !important;
+                word-wrap: break-word !important;
+                overflow-wrap: break-word !important;
             }
 
             th {
                 background: #0b57d0 !important;
                 color: white !important;
-                -webkit-print-color-adjust: exact;
-                print-color-adjust: exact;
+                text-align: center !important;
+                font-size: 9px !important;
+            }
+
+            td {
+                background: white !important;
+                color: #000 !important;
+            }
+
+            .body-table tbody tr:nth-child(even) td {
+                background: #f7f7f7 !important;
             }
 
             .col-actions,
@@ -489,36 +587,57 @@
             .col-type,
             .col-front,
             .col-back,
-            .col-average {
+            .col-average,
+            .col-tracker {
                 display: none !important;
             }
 
-            .col-group,
-            .col-count,
-            .col-walkers,
-            .col-riders,
-            .col-rotation,
-            .col-total {
-                display: table-cell !important;
+            .col-group {
+                width: 18% !important;
+                text-align: left !important;
             }
 
-            @page {
-                size: portrait;
-                margin: 0.3in;
+            .col-players {
+                width: 33% !important;
+                text-align: left !important;
+                font-size: 9px !important;
+            }
+
+            .col-count,
+            .col-walkers,
+            .col-riders {
+                width: 8% !important;
+                text-align: center !important;
+            }
+
+            .col-rotation {
+                width: 15% !important;
+                text-align: center !important;
+            }
+
+            .col-total {
+                width: 10% !important;
+                text-align: center !important;
+            }
+
+            tr,
+            td,
+            th {
+                page-break-inside: avoid !important;
             }
         }
     </style>
 </head>
 <body data-editing="{% if edit_id is not none %}true{% else %}false{% endif %}">
-        <div class="nav-bar">
-            <div class="nav-inner">
-                <div class="nav-left">
-                    <a href="/" class="nav-link">Home</a>
-                    <a href="/tee-sheet" class="nav-link">Tee Sheet</a>
-                    <a href="/archive" class="nav-link">Archive</a>
-                </div>
+    <div class="nav-bar">
+        <div class="nav-inner">
+            <div class="nav-left">
+                <a href="/" class="nav-link">Home</a>
+                <a href="/tee-sheet" class="nav-link">Tee Sheet</a>
+                <a href="/archive" class="nav-link">Archive</a>
             </div>
         </div>
+    </div>
 
     <div class="page-shell">
 
@@ -547,7 +666,7 @@
                 </div>
             </div>
 
-            <div class="print-section rotation-list" style="margin-top: 30px;">
+            <div class="print-section rotation-list" style="margin-top: 10px;">
                 <h2 style="text-align: center;">Course Rotation Pace</h2>
 
                 <div class="print-rotation-grid">
@@ -607,7 +726,7 @@
 
                         <form action="/archive/save-current" method="POST">
                             <button class="btn btn-add" type="submit">Save to Archive</button>
-                        </form> 
+                        </form>
 
                         <button class="btn btn-print" type="button" onclick="window.print()">Print</button>
                     </div>
@@ -625,7 +744,7 @@
                             <th class="col-time">Start Time</th>
                             <th class="col-group">Group Name</th>
                             <th class="col-players">Players</th>
-                            <th class="col-tracker">Tracker</th>        
+                            <th class="col-tracker">Tracker</th>
                             <th class="col-count"># of Players</th>
                             <th class="col-walkers">Walkers</th>
                             <th class="col-riders">Riders</th>
@@ -648,14 +767,15 @@
                             <th class="col-time">Time</th>
                             <th class="col-group">Group Name</th>
                             <th class="col-players">Players</th>
-                            <th class="col-count"># of Players</th>
-                            <th class="col-walkers">Walkers</th>
-                            <th class="col-riders">Riders</th>
+                            <th class="col-tracker">Tracker</th>
+                            <th class="col-count">#</th>
+                            <th class="col-walkers">W</th>
+                            <th class="col-riders">R</th>
                             <th class="col-type">Group Type</th>
                             <th class="col-front">Front</th>
                             <th class="col-back">Back</th>
                             <th class="col-rotation">Rotation</th>
-                            <th class="col-total">Total Time</th>
+                            <th class="col-total">Time</th>
                             <th class="col-average">Average/<wbr>Hole</th>
                         </tr>
                     </thead>
@@ -678,16 +798,16 @@
                             <td class="col-group">{{ row.group_name }}</td>
                             <td class="col-players">
                                 <input type="text" name="players" value="{{ row.players }}" placeholder="Smith, Jones, Brown, Kelly" form="save-form-{{ loop.index0 }}">
+                            </td>
                             <td class="col-tracker tracker-cell">
                                 <select name="tracker_id" form="save-form-{{ loop.index0 }}" class="tracker-select">
                                     <option value="">None</option>
                                     {% for t in trackers %}
-                                        <option value="{{ t[0] }}"
-                                            {% if row.tracker_id == t[0] %}selected{% endif %}>
+                                        <option value="{{ t[0] }}" {% if row.tracker_id == t[0] %}selected{% endif %}>
                                             {{ t[1] }}
                                         </option>
                                     {% endfor %}
-                                </select>   
+                                </select>
                             </td>
                             <td class="col-count">{{ row.num_players }}</td>
                             <td class="col-walkers">
@@ -738,7 +858,7 @@
                                         {{ t[1] }}
                                     {% endif %}
                                 {% endfor %}
-                            </td>  
+                            </td>
                             <td class="col-count">{{ row.num_players }}</td>
                             <td class="col-walkers">{{ row.walkers }}</td>
                             <td class="col-riders">{{ row.riders }}</td>
@@ -757,7 +877,6 @@
         </div>
         {% else %}
         <div class="empty-state">
-                    
             <div class="top-bar" style="margin-bottom: 20px;">
                 <form class="add-form" action="/add-reservation" method="POST">
                     <button class="btn btn-add" type="submit">Add Reservation</button>
@@ -767,7 +886,6 @@
             </div>
 
             <p>No tee sheet has been uploaded yet.</p>
-
         </div>
         {% endif %}
     </div>
@@ -943,22 +1061,21 @@
 
         document.querySelectorAll('form[action^="/save/"]').forEach(form => {
             form.addEventListener("submit", () => {
-            const scrollInput = form.querySelector(".scroll-top-input");
-            if (scrollInput && bodyScroll) {
-            scrollInput.value = bodyScroll.scrollTop;
-        }
-    });
-});
+                const scrollInput = form.querySelector(".scroll-top-input");
+                if (scrollInput && bodyScroll) {
+                    scrollInput.value = bodyScroll.scrollTop;
+                }
+            });
+        });
 
-window.addEventListener("load", () => {
-    const params = new URLSearchParams(window.location.search);
-    const scrollTop = params.get("scroll_top");
+        window.addEventListener("load", () => {
+            const params = new URLSearchParams(window.location.search);
+            const scrollTop = params.get("scroll_top");
 
-    if (scrollTop !== null && bodyScroll) {
-        bodyScroll.scrollTop = parseInt(scrollTop, 10) || 0;
-    }
-});
+            if (scrollTop !== null && bodyScroll) {
+                bodyScroll.scrollTop = parseInt(scrollTop, 10) || 0;
+            }
+        });
     </script>
 </body>
 </html>
-
