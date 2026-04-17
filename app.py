@@ -22,7 +22,33 @@ app = Flask(__name__)
 # ---------------- DATABASE ----------------
 
 def get_connection():
-    return connect(os.getenv("SQL_CONNECTION_STRING"))
+    base_conn_str = os.getenv("SQL_CONNECTION_STRING")
+
+    if not base_conn_str:
+        raise ValueError("SQL_CONNECTION_STRING is missing")
+
+    conn_str = base_conn_str.strip()
+
+    # Make sure the connection string uses the correct timeout key
+    if "Connect Timeout=" not in conn_str:
+        if not conn_str.endswith(";"):
+            conn_str += ";"
+        conn_str += "Connect Timeout=30;"
+
+    last_error = None
+
+    # Retry a few times in case Azure/Render has a temporary delay
+    for attempt in range(3):
+        try:
+            return connect(conn_str)
+        except Exception as e:
+            last_error = e
+
+            # wait a little longer after each failed attempt
+            if attempt < 2:
+                time.sleep(2 * (attempt + 1))
+
+    raise last_error
 
 
 def log_upload(filename):
