@@ -6,7 +6,7 @@ from datetime import datetime
 import fitz
 from dotenv import load_dotenv
 from flask import Flask, redirect, render_template, request, jsonify
-from pyodbc
+import pyodbc
 
 import io
 from azure.storage.blob import BlobServiceClient
