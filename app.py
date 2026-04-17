@@ -6,7 +6,7 @@ from datetime import datetime
 import fitz
 from dotenv import load_dotenv
 from flask import Flask, redirect, render_template, request, jsonify
-from mssql_python import connect
+from pyodbc
 
 import io
 from azure.storage.blob import BlobServiceClient
@@ -27,17 +27,13 @@ def get_connection():
     if not conn_str:
         raise ValueError("SQL_CONNECTION_STRING is missing")
 
-    # 🚫 Remove ANY timeout params (they break mssql_python)
-    conn_str = conn_str.replace("Connection Timeout=30;", "")
-    conn_str = conn_str.replace("Connect Timeout=30;", "")
-
     attempts = 3
     delay = 2
     last_error = None
 
     for attempt in range(1, attempts + 1):
         try:
-            return connect(conn_str)
+            return pyodbc.connect(conn_str, timeout=30)
         except Exception as e:
             last_error = e
             print(f"DB connection failed (attempt {attempt}): {e}")

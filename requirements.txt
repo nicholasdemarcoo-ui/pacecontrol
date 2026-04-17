@@ -2,6 +2,6 @@ Flask
 PyMuPDF
 gunicorn
 python-dotenv
-mssql-python
+pyodbc
 azure-storage-blob
 reportlab
