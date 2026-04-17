@@ -241,7 +241,10 @@
         }
 
         .body-table tr.editing-row td {
-            background: #fff8c6 !important;
+            background: #b6feb6 !important;
+        }
+        .body-table tr.finished-row td {
+            background: #b6feb6 !important;
         }
 
         input[type="text"],
@@ -782,7 +785,7 @@
                     <tbody>
                         {% for row in rows %}
                         {% if edit_id == loop.index0 %}
-                        <tr id="row-{{ loop.index0 }}" class="editing-row">
+                        <tr id="row-{{ loop.index0 }}" class="editing-row {% if row.total_time %}finished-row{% endif %}">
                             <td class="col-actions">
                                 <form id="save-form-{{ loop.index0 }}" action="/save/{{ loop.index0 }}" method="POST" style="margin: 0;">
                                     <input type="hidden" name="scroll_top" class="scroll-top-input" value="0">
@@ -840,7 +843,7 @@
                             <td class="col-average">{{ row.average_hole }}</td>
                         </tr>
                         {% else %}
-                        <tr id="row-{{ loop.index0 }}">
+                        <tr id="row-{{ loop.index0 }}" class="{% if row.total_time %}finished-row{% endif %}">
                             <td class="col-actions">
                                 <div class="actions">
                                     <a class="btn btn-edit" href="/tee-sheet?edit={{ loop.index0 }}#row-{{ loop.index0 }}">Edit</a>
