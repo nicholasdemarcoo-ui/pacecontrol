@@ -722,6 +722,7 @@ def save_archive_record():
         raise ValueError("No active sheet found")
 
     rows = get_sheet_rows(sheet["id"])
+    rows = sorted(rows, key=lambda r: (r.get("group_name") or "").strip().lower())
 
     safe_date = (sheet.get("date") or "archive").replace(",", "").replace(" ", "_")
     filename = f"tee_sheet_{safe_date}.pdf"
