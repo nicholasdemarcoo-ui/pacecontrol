@@ -1,1084 +1,769 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
-    <title>Pace Sheet</title>
-    <style>
-        html, body {
-            height: 100%;
-            overflow: hidden;
-        }
-
-        body {
-            font-family: Arial, sans-serif;
-            margin: 0;
-            background: #f7f7f7;
-            color: #222;
-        }
-
-        .nav-bar {
-            position: sticky;
-            top: 0;
-            width: 100%;
-            z-index: 100;
-            background: #0b57d0;
-            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.12);
-        }
-
-        .nav-inner {
-            width: 100%;
-            margin: 0;
-            padding: 14px 20px;
-            display: flex;
-            align-items: center;
-        }
-
-        .nav-left {
-            display: flex;
-            align-items: center;
-            gap: 14px;
-        }
-
-        .nav-title {
-            color: white;
-            font-size: 16px;
-            font-weight: bold;
-            margin-right: 8px;
-        }
-
-        .nav-link {
-            color: white;
-            text-decoration: none;
-            padding: 8px 14px;
-            border-radius: 999px;
-            background: rgba(255, 255, 255, 0.14);
-            font-size: 14px;
-        }
-
-        .nav-link:hover {
-            background: rgba(255, 255, 255, 0.24);
-        }
-
-        .page-shell {
-            height: calc(100vh - 58px);
-            width: 100%;
-            display: flex;
-            flex-direction: column;
-            padding: 6px 20px 16px 20px;
-            box-sizing: border-box;
-        }
-
-        .body-table-wrap::after {
-            content: "";
-            position: sticky;
-            bottom: 0;
-            height: 20px;
-            background: linear-gradient(to bottom, transparent, white);
-            display: block;
-        }
-
-        .sticky-header {
-            position: sticky;
-            top: 58px;
-            z-index: 50;
-            background: #f7f7f7;
-            padding-top: 20px;
-            padding-bottom: 14px;
-            border-bottom: 1px solid #ddd;
-        }
-
-        .top-row {
-            display: grid;
-            grid-template-columns: 1fr auto;
-            align-items: start;
-            gap: 24px;
-            min-height: 170px;
-        }
-
-        .left-side {
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: flex-start;
-            grid-column: 1;
-        }
-
-        .title-row {
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-        }
-
-        h1 {
-            margin: 0;
-            font-size: 64px;
-            line-height: 1;
-            text-align: center;
-        }
-
-        .sheet-date {
-            font-size: 20px;
-            font-weight: 500;
-            color: #777;
-            text-align: center;
-            margin-top: 6px;
-        }
-
-        .right-panel {
-            grid-column: 2;
-            display: flex;
-            flex-direction: column;
-            align-items: stretch;
-            gap: 12px;
-            min-width: 420px;
-        }
-
-        .summary-box {
-            display: flex;
-            gap: 40px;
-            background: white;
-            padding: 16px 20px;
-            border-radius: 10px;
-            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
-        }
-
-        .summary-col {
-            display: flex;
-            flex-direction: column;
-            gap: 8px;
-            font-size: 15px;
-            line-height: 1.35;
-        }
-
-        .top-bar {
-            display: flex;
-            justify-content: center;
-            gap: 12px;
-            align-items: center;
-            flex-wrap: wrap;
-        }
-
-        .col-tracker {
-            width: 140px;
-            max-width: 140px;
-        }
-
-        .tracker-cell {
-            width: 140px;
-            max-width: 140px;
-        }
-
-        .tracker-select {
-            width: 100%;
-            max-width: 100%;
-            box-sizing: border-box;
-        }
-
-        .table-shell {
-            background: white;
-            margin-top: 18px;
-            padding: 16px;
-            border-radius: 12px;
-            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.08);
-            flex: 1;
-            display: flex;
-            flex-direction: column;
-            overflow: hidden;
-            min-height: 0;
-            padding-bottom: 10px;
-        }
-
-        .header-table-wrap {
-            overflow: hidden;
-            border-radius: 8px 8px 0 0;
-            flex-shrink: 0;
-        }
-
-        .body-table-wrap {
-            overflow-x: auto;
-            overflow-y: auto;
-            -webkit-overflow-scrolling: touch;
-            flex: 1;
-            min-height: 0;
-            padding-bottom: 20px;
-        }
-
-        .empty-state {
-            background: white;
-            margin-top: 18px;
-            padding: 30px;
-            border-radius: 12px;
-            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.08);
-        }
-
-        table {
-            width: 100%;
-            border-collapse: collapse;
-            table-layout: fixed;
-            background: white;
-        }
-
-        th,
-        td {
-            border: 1px solid #ddd;
-            padding: 10px;
-            text-align: left;
-            vertical-align: middle;
-            background: white;
-            box-sizing: border-box;
-        }
-
-        th {
-            background: #0b57d0;
-            color: white;
-            font-weight: bold;
-        }
-
-        .body-table tbody tr:nth-child(even) td {
-            background: #f9f9f9;
-        }
-
-        .body-table tr.editing-row td {
-            background: #fffbaf !important;
-        }
-        .body-table tr.finished-row td {
-            background: #b6feb6 !important;
-        }
-
-        input[type="text"],
-        select {
-            width: 100%;
-            min-width: 0;
-            padding: 8px;
-            border: 1px solid #bbb;
-            border-radius: 6px;
-            box-sizing: border-box;
-            font-size: 14px;
-            background: white;
-        }
-
-        .actions {
-            display: flex;
-            gap: 8px;
-            align-items: center;
-            justify-content: center;
-            flex-wrap: nowrap;
-        }
-
-        .btn {
-            display: inline-block;
-            padding: 8px 12px;
-            border-radius: 8px;
-            text-decoration: none;
-            border: none;
-            cursor: pointer;
-            font-size: 14px;
-            white-space: nowrap;
-            flex-shrink: 0;
-        }
-
-        .btn-edit,
-        .btn-save,
-        .btn-add {
-            background: #0b57d0;
-            color: white;
-        }
-
-        .btn-delete {
-            background: #c62828;
-            color: white;
-        }
-
-        .btn-cancel {
-            background: #777;
-            color: white;
-        }
-
-        .btn-print {
-            background: #2e7d32;
-            color: white;
-        }
-
-        .add-form {
-            margin: 0;
-        }
-
-        .col-tracker { width: 100px; }
-        .col-actions { width: 135px; }
-        .col-time { width: 90px; }
-        .col-group { width: 150px; }
-        .col-players { width: 260px; }
-        .col-count { width: 75px; }
-        .col-walkers { width: 75px; }
-        .col-riders { width: 75px; }
-        .col-type { width: 130px; display: none; }
-        .col-front { width: 75px; }
-        .col-back { width: 75px; }
-        .col-rotation { width: 104px; }
-        .col-total { width: 87px; }
-        .col-average { width: 90px; display: none; }
-
-        .col-count,
-        .col-tracker,
-        .col-walkers,
-        .col-riders,
-        .col-front,
-        .col-back,
-        .col-rotation,
-        .col-total,
-        .col-actions,
-        .col-time,
-        .col-average {
-            text-align: center;
-            vertical-align: middle;
-        }
-
-        .print-cover {
-            display: none;
-        }
-
-        .print-body-head {
-            display: none;
-        }
-
-        .print-cover h1 {
-            font-size: 36px;
-            margin-bottom: 10px;
-        }
-
-        .print-cover .cover-date {
-            font-size: 20px;
-            margin-bottom: 25px;
-            color: #555;
-            text-align: center;
-        }
-
-        .print-grid {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 30px;
-            margin-top: 20px;
-        }
-
-        .print-section {
-            border: 1px solid #ddd;
-            border-radius: 8px;
-            padding: 16px;
-        }
-
-        .print-section h2 {
-            margin-top: 0;
-            margin-bottom: 12px;
-            font-size: 20px;
-        }
-
-        .print-line {
-            margin-bottom: 8px;
-            font-size: 15px;
-        }
-
-        .rotation-list .print-line {
-            margin-bottom: 6px;
-        }
-
-        .print-rotation-grid {
-            display: grid;
-            grid-template-columns: repeat(3, 1fr);
-            gap: 24px;
-            margin-top: 15px;
-            text-align: center;
-        }
-
-        .rotation-col {
-            display: flex;
-            flex-direction: column;
-            gap: 8px;
-            align-items: center;
-            text-align: center;
-        }
-
-        .rotation-title {
-            font-size: 18px;
-            font-weight: bold;
-            margin-bottom: 6px;
-            border-bottom: 1px solid #ccc;
-            padding-bottom: 4px;
-            width: 100%;
-            text-align: center;
-        }
-
-        @media print {
-            @page {
-                size: portrait;
-                margin: 0.35in;
-            }
-
-            html, body {
-                height: auto !important;
-                overflow: visible !important;
-                background: white !important;
-            }
-
-            body {
-                margin: 0 !important;
-                padding: 0 !important;
-                color: #000 !important;
-                font-family: Arial, sans-serif;
-                -webkit-print-color-adjust: exact;
-                print-color-adjust: exact;
-            }
-
-            .nav-bar,
-            .top-bar,
-            .btn,
-            form,
-            .header-table-wrap,
-            .body-table-wrap::after,
-            .empty-state {
-                display: none !important;
-            }
-
-            .page-shell {
-                height: auto !important;
-                width: 100% !important;
-                max-width: 100% !important;
-                padding: 0 !important;
-                margin: 0 !important;
-                display: block !important;
-            }
-
-            .sticky-header {
-                position: static !important;
-                top: auto !important;
-                background: white !important;
-                border-bottom: none !important;
-                padding: 0 !important;
-                margin: 0 0 10px 0 !important;
-            }
-
-            .top-row {
-                display: none !important;
-            }
-
-            .print-cover {
-                display: block !important;
-                page-break-after: avoid !important;
-                margin: 0 0 12px 0 !important;
-            }
-
-            .print-cover h1 {
-                font-size: 24px !important;
-                line-height: 1.1 !important;
-                text-align: center !important;
-                margin: 0 0 4px 0 !important;
-            }
-
-            .print-cover .cover-date {
-                font-size: 14px !important;
-                color: #444 !important;
-                text-align: center !important;
-                margin: 0 0 12px 0 !important;
-            }
-
-            .print-grid {
-                display: grid !important;
-                grid-template-columns: 1fr 1fr !important;
-                gap: 12px !important;
-                margin: 0 0 10px 0 !important;
-            }
-
-            .print-section {
-                border: 1px solid #cfcfcf !important;
-                border-radius: 0 !important;
-                padding: 8px 10px !important;
-                break-inside: avoid !important;
-                page-break-inside: avoid !important;
-            }
-
-            .print-section h2 {
-                font-size: 14px !important;
-                margin: 0 0 6px 0 !important;
-            }
-
-            .print-line {
-                font-size: 11px !important;
-                line-height: 1.25 !important;
-                margin-bottom: 4px !important;
-            }
-
-            .rotation-list {
-                margin-top: 10px !important;
-            }
-
-            .print-rotation-grid {
-                display: grid !important;
-                grid-template-columns: repeat(3, 1fr) !important;
-                gap: 10px !important;
-                margin-top: 8px !important;
-                text-align: center !important;
-            }
-
-            .rotation-col {
-                gap: 4px !important;
-            }
-
-            .rotation-title {
-                font-size: 12px !important;
-                margin-bottom: 2px !important;
-                padding-bottom: 2px !important;
-            }
-
-            .table-shell {
-                box-shadow: none !important;
-                border-radius: 0 !important;
-                background: white !important;
-                margin: 0 !important;
-                padding: 0 !important;
-                display: block !important;
-                overflow: visible !important;
-            }
-
-            .body-table-wrap {
-                overflow: visible !important;
-                max-height: none !important;
-                padding: 0 !important;
-                margin: 0 !important;
-            }
-
-            .body-table {
-                width: 100% !important;
-                table-layout: fixed !important;
-                border-collapse: collapse !important;
-                font-size: 9.5px !important;
-                margin: 0 !important;
-            }
-
-            .print-body-head {
-                display: table-header-group !important;
-            }
-
-            th,
-            td {
-                border: 1px solid #bdbdbd !important;
-                padding: 3px 4px !important;
-                vertical-align: middle !important;
-                box-sizing: border-box !important;
-                word-wrap: break-word !important;
-                overflow-wrap: break-word !important;
-            }
-
-            th {
-                background: #0b57d0 !important;
-                color: white !important;
-                text-align: center !important;
-                font-size: 9px !important;
-            }
-
-            td {
-                background: white !important;
-                color: #000 !important;
-            }
-
-            .body-table tbody tr:nth-child(even) td {
-                background: #f7f7f7 !important;
-            }
-
-            .col-actions,
-            .col-time,
-            .col-type,
-            .col-front,
-            .col-back,
-            .col-average,
-            .col-tracker {
-                display: none !important;
-            }
-
-            .col-group {
-                width: 18% !important;
-                text-align: left !important;
-            }
-
-            .col-players {
-                width: 33% !important;
-                text-align: left !important;
-                font-size: 9px !important;
-            }
-
-            .col-count,
-            .col-walkers,
-            .col-riders {
-                width: 8% !important;
-                text-align: center !important;
-            }
-
-            .col-rotation {
-                width: 15% !important;
-                text-align: center !important;
-            }
-
-            .col-total {
-                width: 10% !important;
-                text-align: center !important;
-            }
-
-            tr,
-            td,
-            th {
-                page-break-inside: avoid !important;
-            }
-        }
-    </style>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+  <meta name="apple-mobile-web-app-title" content="Tee Sheet" />
+  <title>Offline Tee Sheet</title>
+  <link rel="manifest" href="/static/manifest.json" />
+  <meta name="theme-color" content="#1f2937" />
+  <link rel="apple-touch-icon" href="/static/icons/icon-192.png" />
+  <style>
+    :root {
+      --bg: #f4f6f8;
+      --card: #ffffff;
+      --line: #d9dee5;
+      --text: #1e293b;
+      --muted: #64748b;
+      --blue: #1d4ed8;
+      --blue-dark: #163ea8;
+      --green: #eaf8ec;
+      --yellow: #fff7db;
+      --red: #b91c1c;
+      --shadow: 0 4px 18px rgba(15, 23, 42, 0.08);
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: Arial, Helvetica, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      -webkit-text-size-adjust: 100%;
+    }
+    .wrap {
+      max-width: 1600px;
+      margin: 0 auto;
+      padding: 16px;
+    }
+    .topbar {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 12px;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 14px;
+    }
+    h1 {
+      margin: 0;
+      font-size: 30px;
+      line-height: 1.1;
+    }
+    .subtitle {
+      color: var(--muted);
+      font-size: 14px;
+      margin-top: 4px;
+    }
+    .panel {
+      background: var(--card);
+      border: 1px solid var(--line);
+      border-radius: 16px;
+      box-shadow: var(--shadow);
+      padding: 14px;
+      margin-bottom: 14px;
+    }
+    .controls {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+      gap: 10px;
+      align-items: end;
+    }
+    .field {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+    .field label {
+      font-size: 13px;
+      font-weight: 700;
+      color: var(--muted);
+    }
+    input, select, button, textarea {
+      font: inherit;
+    }
+    input, select, textarea {
+      width: 100%;
+      padding: 10px 12px;
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      background: #fff;
+      color: var(--text);
+      min-height: 42px;
+    }
+    button {
+      border: 0;
+      border-radius: 10px;
+      padding: 10px 14px;
+      font-weight: 700;
+      cursor: pointer;
+      min-height: 42px;
+    }
+    .btn-primary {
+      background: var(--blue);
+      color: #fff;
+    }
+    .btn-primary:hover { background: var(--blue-dark); }
+    .btn-secondary { background: #e2e8f0; color: var(--text); }
+    .btn-danger { background: #fee2e2; color: var(--red); }
+    .btn-small { padding: 8px 10px; min-height: 34px; font-size: 13px; }
+    .actions-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-top: 10px;
+    }
+    .summary-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+      gap: 10px;
+    }
+    .summary-card {
+      background: #fff;
+      border: 1px solid var(--line);
+      border-radius: 14px;
+      padding: 12px;
+    }
+    .summary-label {
+      font-size: 12px;
+      color: var(--muted);
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: .04em;
+    }
+    .summary-value {
+      font-size: 24px;
+      font-weight: 800;
+      margin-top: 6px;
+    }
+    .table-wrap {
+      overflow: auto;
+      border: 1px solid var(--line);
+      border-radius: 14px;
+      background: #fff;
+    }
+    table {
+      width: 100%;
+      min-width: 1500px;
+      border-collapse: separate;
+      border-spacing: 0;
+    }
+    thead th {
+      position: sticky;
+      top: 0;
+      z-index: 5;
+      background: #eef2f7;
+      color: var(--text);
+      font-size: 13px;
+      text-align: left;
+      border-bottom: 1px solid var(--line);
+      padding: 10px 8px;
+      white-space: nowrap;
+    }
+    tbody td {
+      border-bottom: 1px solid #edf1f5;
+      padding: 6px;
+      vertical-align: middle;
+      background: #fff;
+    }
+    tbody tr.finished td {
+      background: var(--green);
+    }
+    tbody tr.editing td {
+      background: var(--yellow);
+    }
+    td input, td select {
+      min-height: 38px;
+      padding: 8px 10px;
+      border-radius: 8px;
+    }
+    .row-actions {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+    }
+    .muted {
+      color: var(--muted);
+      font-size: 13px;
+    }
+    .saved-banner {
+      font-size: 13px;
+      color: #166534;
+      font-weight: 700;
+      min-height: 18px;
+    }
+    .archive-list {
+      display: grid;
+      gap: 10px;
+    }
+    .archive-item {
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      padding: 12px;
+      background: #fff;
+      display: flex;
+      gap: 10px;
+      justify-content: space-between;
+      align-items: center;
+      flex-wrap: wrap;
+    }
+    .archive-title {
+      font-weight: 800;
+      margin-bottom: 4px;
+    }
+    .mobile-note {
+      font-size: 12px;
+      color: var(--muted);
+      margin-top: 8px;
+    }
+    @media (max-width: 900px) {
+      .wrap { padding: 10px; }
+      h1 { font-size: 24px; }
+      .summary-value { font-size: 20px; }
+      button, input, select { font-size: 16px; }
+    }
+    @media print {
+      body { background: #fff; }
+      .no-print { display: none !important; }
+      .panel, .table-wrap { box-shadow: none; border: 1px solid #bbb; }
+      .wrap { max-width: none; padding: 0; }
+      table { min-width: 0; }
+      thead th { position: static; }
+    }
+  </style>
 </head>
-<body data-editing="{% if edit_id is not none %}true{% else %}false{% endif %}">
-    <div class="nav-bar">
-        <div class="nav-inner">
-            <div class="nav-left">
-                <a href="/" class="nav-link">Home</a>
-                <a href="/tee-sheet" class="nav-link">Tee Sheet</a>
-                <a href="/archive" class="nav-link">Archive</a>
-            </div>
-        </div>
+<body>
+  <div class="wrap">
+    <div class="topbar">
+      <div>
+        <h1>Offline Tee Sheet</h1>
+        <div class="subtitle">Runs fully on this device. No internet needed once the file is saved locally.</div>
+      </div>
+      <div class="saved-banner" id="saveStatus"> </div>
     </div>
-
-    <div class="page-shell">
-
-        <div class="print-cover">
-            <h1>Tee Sheet Summary</h1>
-            {% if tee_sheet_date %}
-                <div class="cover-date">{{ tee_sheet_date }}</div>
-            {% endif %}
-
-            <div class="print-grid">
-                <div class="print-section">
-                    <h2>Totals</h2>
-                    <div class="print-line"><strong>Total # of Groups:</strong> {{ summary.groups }}</div>
-                    <div class="print-line"><strong>Total # of Walkers:</strong> {{ summary.total_walkers }}</div>
-                    <div class="print-line"><strong>Total # of Riders:</strong> {{ summary.total_riders }}</div>
-                </div>
-
-                <div class="print-section">
-                    <h2>Pace Summary</h2>
-                    <div class="print-line"><strong>Fastest Round:</strong> {{ summary.fastest }}{% if summary.fastest_name %} ({{ summary.fastest_name }}){% endif %}</div>
-                    <div class="print-line"><strong>Slowest Round:</strong> {{ summary.slowest }}{% if summary.slowest_name %} ({{ summary.slowest_name }}){% endif %}</div>
-                    <div class="print-line"><strong>Average Pace:</strong> {{ summary.average }}</div>
-                    <div class="print-line"><strong>Cart Average:</strong> {{ summary.cart_avg }}</div>
-                    <div class="print-line"><strong>Walk Average:</strong> {{ summary.walker_avg }}</div>
-                    <div class="print-line"><strong>Mixed Average:</strong> {{ summary.mixed_avg }}</div>
-                </div>
-            </div>
-
-            <div class="print-section rotation-list" style="margin-top: 10px;">
-                <h2 style="text-align: center;">Course Rotation Pace</h2>
-
-                <div class="print-rotation-grid">
-                    <div class="rotation-col">
-                        <div class="rotation-title">East</div>
-                        <div class="print-line"><strong>East-West:</strong> {{ summary.rotation_pace["East-West"] }}</div>
-                        <div class="print-line"><strong>East-South:</strong> {{ summary.rotation_pace["East-South"] }}</div>
-                    </div>
-
-                    <div class="rotation-col">
-                        <div class="rotation-title">South</div>
-                        <div class="print-line"><strong>South-East:</strong> {{ summary.rotation_pace["South-East"] }}</div>
-                        <div class="print-line"><strong>South-West:</strong> {{ summary.rotation_pace["South-West"] }}</div>
-                    </div>
-
-                    <div class="rotation-col">
-                        <div class="rotation-title">West</div>
-                        <div class="print-line"><strong>West-East:</strong> {{ summary.rotation_pace["West-East"] }}</div>
-                        <div class="print-line"><strong>West-South:</strong> {{ summary.rotation_pace["West-South"] }}</div>
-                    </div>
-                </div>
-            </div>
+    <div class="panel no-print">
+      <div class="controls">
+        <div class="field">
+          <label for="sheetDate">Sheet Date</label>
+          <input type="date" id="sheetDate" />
         </div>
-
-        <div class="sticky-header">
-            <div class="top-row">
-                <div class="left-side">
-                    <div class="title-row">
-                        <h1>Tee Sheet</h1>
-                        {% if tee_sheet_date %}
-                            <div class="sheet-date">{{ tee_sheet_date }}</div>
-                        {% endif %}
-                    </div>
-                </div>
-
-                <div class="right-panel">
-                    <div class="summary-box">
-                        <div class="summary-col">
-                            <div><strong>Total Players:</strong> {{ summary.total_players }}</div>
-                            <div><strong>Fastest Round:</strong> {{ summary.fastest }}{% if summary.fastest_name %} ({{ summary.fastest_name }}){% endif %}</div>
-                            <div><strong>Slowest Round:</strong> {{ summary.slowest }}{% if summary.slowest_name %} ({{ summary.slowest_name }}){% endif %}</div>
-                            <div><strong>Average Pace:</strong> {{ summary.average }}</div>
-                        </div>
-
-                        <div class="summary-col">
-                            <div><strong>Groups:</strong> {{ summary.groups }}</div>
-                            <div><strong>Cart Average:</strong> {{ summary.cart_avg }}</div>
-                            <div><strong>Walk Average:</strong> {{ summary.walker_avg }}</div>
-                            <div><strong>Mixed Average:</strong> {{ summary.mixed_avg }}</div>
-                        </div>
-                    </div>
-
-                    <div class="top-bar">
-                        <form class="add-form" action="/add-reservation" method="POST">
-                            <button class="btn btn-add" type="submit">Add Reservation</button>
-                        </form>
-
-                        <form action="/archive/save-current" method="POST">
-                            <button class="btn btn-add" type="submit">Save to Archive</button>
-                        </form>
-
-                        <button class="btn btn-print" type="button" onclick="window.print()">Print</button>
-                    </div>
-                </div>
-            </div>
+        <div class="field">
+          <label for="front9">Default Front</label>
+          <select id="front9">
+            <option value="East">East</option>
+            <option value="South">South</option>
+            <option value="West">West</option>
+          </select>
         </div>
-
-        {% if rows and rows|length > 0 %}
-        <div class="table-shell">
-            <div class="header-table-wrap" id="headerScroll">
-                <table>
-                    <thead>
-                        <tr>
-                            <th class="col-actions">Actions</th>
-                            <th class="col-time">Start Time</th>
-                            <th class="col-group">Group Name</th>
-                            <th class="col-players">Players</th>
-                            <th class="col-tracker">Tracker</th>
-                            <th class="col-count"># of Players</th>
-                            <th class="col-walkers">Walkers</th>
-                            <th class="col-riders">Riders</th>
-                            <th class="col-type">Group Type</th>
-                            <th class="col-front">Front</th>
-                            <th class="col-back">Back</th>
-                            <th class="col-rotation">Rotation</th>
-                            <th class="col-total">Total Time</th>
-                            <th class="col-average">Average/<wbr>Hole</th>
-                        </tr>
-                    </thead>
-                </table>
-            </div>
-
-            <div class="body-table-wrap" id="bodyScroll">
-                <table class="body-table">
-                    <thead class="print-body-head">
-                        <tr>
-                            <th class="col-actions">Actions</th>
-                            <th class="col-time">Time</th>
-                            <th class="col-group">Group Name</th>
-                            <th class="col-players">Players</th>
-                            <th class="col-tracker">Tracker</th>
-                            <th class="col-count"># of Players</th>
-                            <th class="col-walkers">Walking</th>
-                            <th class="col-riders">Riding</th>
-                            <th class="col-type">Group Type</th>
-                            <th class="col-front">Front</th>
-                            <th class="col-back">Back</th>
-                            <th class="col-rotation">Rotation</th>
-                            <th class="col-total">Time</th>
-                            <th class="col-average">Average/<wbr>Hole</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {% for row in rows %}
-                        {% if edit_id == loop.index0 %}
-                        <tr id="row-{{ loop.index0 }}" class="editing-row {% if row.total_time %}finished-row{% endif %}">
-                            <td class="col-actions">
-                                <form id="save-form-{{ loop.index0 }}" action="/save/{{ loop.index0 }}" method="POST" style="margin: 0;">
-                                    <input type="hidden" name="scroll_top" class="scroll-top-input" value="0">
-                                </form>
-                                <div class="actions">
-                                    <button class="btn btn-save" type="submit" form="save-form-{{ loop.index0 }}">Save</button>
-                                    <a class="btn btn-cancel" href="/tee-sheet#row-{{ loop.index0 }}">Cancel</a>
-                                </div>
-                            </td>
-                            <td class="col-time">
-                                <input type="text" name="reservation_time" value="{{ row.reservation_time }}" placeholder="9:05" class="time-input" form="save-form-{{ loop.index0 }}">
-                            </td>
-                            <td class="col-group">{{ row.group_name }}</td>
-                            <td class="col-players">
-                                <input type="text" name="players" value="{{ row.players }}" placeholder="Smith, Jones, Brown, Kelly" form="save-form-{{ loop.index0 }}">
-                            </td>
-                            <td class="col-tracker tracker-cell">
-                                <select name="tracker_id" form="save-form-{{ loop.index0 }}" class="tracker-select">
-                                    <option value="">None</option>
-                                    {% for t in trackers %}
-                                        <option value="{{ t[0] }}" {% if row.tracker_id == t[0] %}selected{% endif %}>
-                                            {{ t[1] }}
-                                        </option>
-                                    {% endfor %}
-                                </select>
-                            </td>
-                            <td class="col-count">{{ row.num_players }}</td>
-                            <td class="col-walkers">
-                                <select name="walkers" form="save-form-{{ loop.index0 }}">
-                                    <option value="" {% if row.walkers == "" %}selected{% endif %}></option>
-                                    {% for n in player_count_options(row.num_players) %}
-                                        <option value="{{ n }}" {% if row.walkers == n|string %}selected{% endif %}>{{ n }}</option>
-                                    {% endfor %}
-                                </select>
-                            </td>
-                            <td class="col-riders">{{ row.riders if row.riders else "Auto" }}</td>
-                            <td class="col-type">{{ row.group_type if row.group_type else "Auto" }}</td>
-                            <td class="col-front">
-                                <select name="front" class="front-select" form="save-form-{{ loop.index0 }}">
-                                    <option value="" {% if row.front == "" %}selected{% endif %}></option>
-                                    <option value="South" {% if row.front == "South" %}selected{% endif %}>South</option>
-                                    <option value="East" {% if row.front == "East" %}selected{% endif %}>East</option>
-                                    <option value="West" {% if row.front == "West" %}selected{% endif %}>West</option>
-                                </select>
-                            </td>
-                            <td class="col-back">
-                                <select name="back" class="back-select" data-current="{{ row.back }}" form="save-form-{{ loop.index0 }}">
-                                    <option value="" {% if row.back == "" %}selected{% endif %}></option>
-                                </select>
-                            </td>
-                            <td class="col-rotation">{{ row.rotation if row.rotation else "Auto" }}</td>
-                            <td class="col-total">
-                                <input type="text" name="total_time" value="{{ row.total_time }}" placeholder="4:05" class="total-time-input" form="save-form-{{ loop.index0 }}">
-                            </td>
-                            <td class="col-average">{{ row.average_hole }}</td>
-                        </tr>
-                        {% else %}
-                        <tr id="row-{{ loop.index0 }}" class="{% if row.total_time %}finished-row{% endif %}">
-                            <td class="col-actions">
-                                <div class="actions">
-                                    <a class="btn btn-edit" href="/tee-sheet?edit={{ loop.index0 }}#row-{{ loop.index0 }}">Edit</a>
-                                    <form action="/delete/{{ loop.index0 }}" method="POST" style="margin: 0;">
-                                        <button class="btn btn-delete" type="submit" onclick="return confirm('Delete this reservation?')">Delete</button>
-                                    </form>
-                                </div>
-                            </td>
-                            <td class="col-time">{{ row.reservation_time }}</td>
-                            <td class="col-group">{{ row.group_name }}</td>
-                            <td class="col-players">{{ row.players }}</td>
-                            <td class="col-tracker">
-                                {% for t in trackers %}
-                                    {% if t[0] == row.tracker_id %}
-                                        {{ t[1] }}
-                                    {% endif %}
-                                {% endfor %}
-                            </td>
-                            <td class="col-count">{{ row.num_players }}</td>
-                            <td class="col-walkers">{{ row.walkers }}</td>
-                            <td class="col-riders">{{ row.riders }}</td>
-                            <td class="col-type">{{ row.group_type }}</td>
-                            <td class="col-front">{{ row.front }}</td>
-                            <td class="col-back">{{ row.back }}</td>
-                            <td class="col-rotation">{{ row.rotation }}</td>
-                            <td class="col-total">{{ row.total_time }}</td>
-                            <td class="col-average">{{ row.average_hole }}</td>
-                        </tr>
-                        {% endif %}
-                        {% endfor %}
-                    </tbody>
-                </table>
-            </div>
+        <div class="field">
+          <label for="back9">Default Back</label>
+          <select id="back9">
+            <option value="West">West</option>
+            <option value="South">South</option>
+            <option value="East">East</option>
+            <option value="">9 Holes Only</option>
+          </select>
         </div>
-        {% else %}
-        <div class="empty-state">
-            <div class="top-bar" style="margin-bottom: 20px;">
-                <form class="add-form" action="/add-reservation" method="POST">
-                    <button class="btn btn-add" type="submit">Add Reservation</button>
-                </form>
-
-                <a href="/archive" class="btn btn-add">Archive</a>
-            </div>
-
-            <p>No tee sheet has been uploaded yet.</p>
+        <div class="field">
+          <label for="loadArchive">Load Saved Day</label>
+          <select id="loadArchive">
+            <option value="">Select saved day</option>
+          </select>
         </div>
-        {% endif %}
+      </div>
+      <div class="actions-row">
+        <button class="btn-primary" id="addRowBtn">Add Reservation</button>
+        <button class="btn-secondary" id="saveBtn">Save Current Tee Sheet</button>
+        <button class="btn-secondary" id="newSheetBtn">New Blank Sheet</button>
+        <button class="btn-secondary" id="exportBtn">Export JSON Backup</button>
+        <button class="btn-secondary" id="importBtn">Import JSON Backup</button>
+        <button class="btn-secondary" id="printBtn">Print / Save PDF</button>
+        <button class="btn-danger" id="clearBtn">Delete Current Tee Sheet</button>
+      </div>
+      <input type="file" id="importFile" accept="application/json" style="display:none;" />
+      <div class="mobile-note">Tip: on iPad or iPhone, save this page to your Home Screen for faster access.</div>
     </div>
-
-    <script>
-        const headerScroll = document.getElementById("headerScroll");
-        const bodyScroll = document.getElementById("bodyScroll");
-
-        if (headerScroll && bodyScroll) {
-            bodyScroll.addEventListener("scroll", () => {
-                headerScroll.scrollLeft = bodyScroll.scrollLeft;
-            });
+    <div class="panel">
+      <div class="summary-grid" id="summaryGrid"></div>
+    </div>
+    <div class="panel">
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>Actions</th>
+              <th>Time</th>
+              <th>Group Name</th>
+              <th>Players</th>
+              <th># Players</th>
+              <th>Walkers</th>
+              <th>Riders</th>
+              <th>Group Type</th>
+              <th>Front</th>
+              <th>Back</th>
+              <th>Rotation</th>
+              <th>Total Time</th>
+              <th>Avg / Hole</th>
+              <th>Notes</th>
+            </tr>
+          </thead>
+          <tbody id="teeBody"></tbody>
+        </table>
+      </div>
+    </div>
+    <div class="panel no-print">
+      <h3 style="margin-top:0;">Saved Days</h3>
+      <div class="archive-list" id="archiveList"></div>
+    </div>
+  </div>
+  <script>
+    const STORAGE_KEY = 'offline_tee_sheet_current_v1';
+    const ARCHIVE_KEY = 'offline_tee_sheet_archive_v1';
+    const sheetDateEl = document.getElementById('sheetDate');
+    const front9El = document.getElementById('front9');
+    const back9El = document.getElementById('back9');
+    const saveStatusEl = document.getElementById('saveStatus');
+    const teeBody = document.getElementById('teeBody');
+    const summaryGrid = document.getElementById('summaryGrid');
+    const loadArchiveEl = document.getElementById('loadArchive');
+    const archiveList = document.getElementById('archiveList');
+    const importFileEl = document.getElementById('importFile');
+    const todayString = () => {
+      const d = new Date();
+      const month = String(d.getMonth() + 1).padStart(2, '0');
+      const day = String(d.getDate()).padStart(2, '0');
+      return `${d.getFullYear()}-${month}-${day}`;
+    };
+    let state = loadCurrentSheet();
+    function blankRow() {
+      return {
+        id: crypto.randomUUID(),
+        time: '',
+        groupName: '',
+        players: '',
+        playerCount: 4,
+        walkers: 0,
+        riders: 4,
+        groupType: 'All Ride',
+        front: front9El?.value || 'East',
+        back: back9El?.value || 'West',
+        totalTime: '',
+        avgPerHole: '',
+        notes: '',
+        editing: true
+      };
+    }
+    function defaultState() {
+      return {
+        date: todayString(),
+        rows: []
+      };
+    }
+    function loadCurrentSheet() {
+      try {
+        const raw = localStorage.getItem(STORAGE_KEY);
+        if (!raw) return defaultState();
+        const parsed = JSON.parse(raw);
+        return {
+          date: parsed.date || todayString(),
+          rows: Array.isArray(parsed.rows) ? parsed.rows : []
+        };
+      } catch {
+        return defaultState();
+      }
+    }
+    function loadArchive() {
+      try {
+        return JSON.parse(localStorage.getItem(ARCHIVE_KEY) || '[]');
+      } catch {
+        return [];
+      }
+    }
+    function saveArchive(items) {
+      localStorage.setItem(ARCHIVE_KEY, JSON.stringify(items));
+      renderArchive();
+    }
+    function flashSaved(msg = 'Saved locally') {
+      saveStatusEl.textContent = msg;
+      setTimeout(() => {
+        if (saveStatusEl.textContent === msg) saveStatusEl.innerHTML = ' ';
+      }, 1500);
+    }
+    function saveCurrentSheet(msg) {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+      if (msg) flashSaved(msg);
+      renderSummary();
+      renderArchive();
+    }
+    function parseTimeToMinutes(value) {
+      if (!value) return null;
+      const cleaned = value.trim().toLowerCase();
+      const match = cleaned.match(/^(\d{1,2})(?::?(\d{2}))?\s*(a|am|p|pm)?$/);
+      if (!match) return null;
+      let hour = parseInt(match[1], 10);
+      let minute = parseInt(match[2] || '0', 10);
+      const mer = match[3];
+      if (minute > 59) return null;
+      if (mer === 'p' || mer === 'pm') {
+        if (hour < 12) hour += 12;
+      } else if (mer === 'a' || mer === 'am') {
+        if (hour === 12) hour = 0;
+      }
+      if (!mer && hour <= 7) {
+        hour += 12;
+      }
+      if (hour > 23) return null;
+      return hour * 60 + minute;
+    }
+    function formatStartTime(value) {
+      if (!value) return '';
+      const mins = parseTimeToMinutes(value);
+      if (mins === null) return value;
+      let hour = Math.floor(mins / 60);
+      const minute = String(mins % 60).padStart(2, '0');
+      const suffix = hour >= 12 ? 'PM' : 'AM';
+      hour = hour % 12 || 12;
+      return `${hour}:${minute} ${suffix}`;
+    }
+    function parseDurationToMinutes(value) {
+      if (!value) return null;
+      let cleaned = String(value).trim().toLowerCase();
+      cleaned = cleaned.replace(/hours?|hrs?/g, '').replace(/minutes?|mins?/g, '').trim();
+      if (/^\d{3,4}$/.test(cleaned)) {
+        const hr = parseInt(cleaned.slice(0, cleaned.length - 2), 10);
+        const min = parseInt(cleaned.slice(-2), 10);
+        if (min <= 59) return hr * 60 + min;
+      }
+      const match = cleaned.match(/^(\d{1,2})[:](\d{2})$/);
+      if (match) {
+        return parseInt(match[1], 10) * 60 + parseInt(match[2], 10);
+      }
+      if (/^\d+$/.test(cleaned)) {
+        return parseInt(cleaned, 10);
+      }
+      return null;
+    }
+    function formatDuration(mins) {
+      if (mins === null || Number.isNaN(mins)) return '';
+      const h = Math.floor(mins / 60);
+      const m = String(mins % 60).padStart(2, '0');
+      return `${h}:${m}`;
+    }
+    function calcGroupType(playerCount, walkers, riders) {
+      if (playerCount <= 0) return '';
+      if (walkers === playerCount) return 'All Walk';
+      if (riders === playerCount) return 'All Ride';
+      return `${walkers} Walk / ${riders} Ride`;
+    }
+    function rotation(front, back) {
+      return back ? `${front}-${back}` : `${front} Only`;
+    }
+    function holeCount(row) {
+      return row.back ? 18 : 9;
+    }
+    function avgPerHole(totalTime, holes) {
+      const mins = parseDurationToMinutes(totalTime);
+      if (mins === null || !holes) return '';
+      const per = mins / holes;
+      const whole = Math.floor(per);
+      const seconds = Math.round((per - whole) * 60);
+      return `${whole}:${String(seconds).padStart(2, '0')}`;
+    }
+    function sortRows() {
+      state.rows.sort((a, b) => {
+        const aTime = parseTimeToMinutes(a.time);
+        const bTime = parseTimeToMinutes(b.time);
+        if (aTime === null && bTime === null) return 0;
+        if (aTime === null) return 1;
+        if (bTime === null) return -1;
+        return aTime - bTime;
+      });
+    }
+    function updateDerived(row) {
+      const pc = Math.max(0, parseInt(row.playerCount || 0, 10) || 0);
+      let walkers = Math.max(0, parseInt(row.walkers || 0, 10) || 0);
+      if (walkers > pc) walkers = pc;
+      const riders = Math.max(0, pc - walkers);
+      row.playerCount = pc;
+      row.walkers = walkers;
+      row.riders = riders;
+      row.groupType = calcGroupType(pc, walkers, riders);
+      row.rotation = rotation(row.front, row.back);
+      row.avgPerHole = avgPerHole(row.totalTime, holeCount(row));
+    }
+    function render() {
+      sheetDateEl.value = state.date || todayString();
+      sortRows();
+      teeBody.innerHTML = '';
+      state.rows.forEach((row) => {
+        updateDerived(row);
+        const tr = document.createElement('tr');
+        if (row.totalTime) tr.classList.add('finished');
+        if (row.editing) tr.classList.add('editing');
+        tr.innerHTML = `
+          <td>
+            <div class="row-actions">
+              <button class="btn-secondary btn-small" onclick="toggleEdit('${row.id}')">${row.editing ? 'Done' : 'Edit'}</button>
+              <button class="btn-danger btn-small" onclick="deleteRow('${row.id}')">Delete</button>
+            </div>
+          </td>
+          <td><input value="${escapeHtml(row.time)}" onchange="updateRow('${row.id}','time',this.value)" onblur="normalizeTime('${row.id}', this)" /></td>
+          <td><input value="${escapeHtml(row.groupName)}" onchange="updateRow('${row.id}','groupName',this.value)" /></td>
+          <td><input value="${escapeHtml(row.players)}" onchange="updateRow('${row.id}','players',this.value)" /></td>
+          <td><input type="number" min="0" max="4" value="${row.playerCount}" onchange="updateRow('${row.id}','playerCount',this.value)" /></td>
+          <td><input type="number" min="0" max="4" value="${row.walkers}" onchange="updateRow('${row.id}','walkers',this.value)" /></td>
+          <td><input value="${row.riders}" disabled /></td>
+          <td><input value="${escapeHtml(row.groupType)}" disabled /></td>
+          <td>
+            <select onchange="updateRow('${row.id}','front',this.value)">
+              ${courseOptions(row.front)}
+            </select>
+          </td>
+          <td>
+            <select onchange="updateRow('${row.id}','back',this.value)">
+              <option value="" ${row.back === '' ? 'selected' : ''}>9 Holes Only</option>
+              ${courseOptions(row.back)}
+            </select>
+          </td>
+          <td><input value="${escapeHtml(rotation(row.front, row.back))}" disabled /></td>
+          <td><input value="${escapeHtml(row.totalTime)}" onchange="updateRow('${row.id}','totalTime',this.value)" onblur="normalizeDuration('${row.id}', this)" /></td>
+          <td><input value="${escapeHtml(row.avgPerHole)}" disabled /></td>
+          <td><input value="${escapeHtml(row.notes || '')}" onchange="updateRow('${row.id}','notes',this.value)" /></td>
+        `;
+        teeBody.appendChild(tr);
+      });
+      renderSummary();
+      renderArchive();
+    }
+    function courseOptions(selected) {
+      return ['East', 'South', 'West'].map(c => `<option value="${c}" ${selected === c ? 'selected' : ''}>${c}</option>`).join('');
+    }
+    function escapeHtml(str) {
+      return String(str ?? '')
+        .replace(/&/g, '&')
+        .replace(/</g, '<')
+        .replace(/>/g, '>')
+        .replace(/"/g, '"');
+    }
+    function updateRow(id, field, value) {
+      const row = state.rows.find(r => r.id === id);
+      if (!row) return;
+      row[field] = value;
+      updateDerived(row);
+      saveCurrentSheet('Saved locally');
+      render();
+    }
+    function normalizeTime(id, input) {
+      const row = state.rows.find(r => r.id === id);
+      if (!row) return;
+      row.time = formatStartTime(input.value);
+      saveCurrentSheet('Saved locally');
+      render();
+    }
+    function normalizeDuration(id, input) {
+      const row = state.rows.find(r => r.id === id);
+      if (!row) return;
+      const mins = parseDurationToMinutes(input.value);
+      row.totalTime = mins === null ? input.value : formatDuration(mins);
+      updateDerived(row);
+      saveCurrentSheet('Saved locally');
+      render();
+    }
+    function toggleEdit(id) {
+      const row = state.rows.find(r => r.id === id);
+      if (!row) return;
+      row.editing = !row.editing;
+      saveCurrentSheet('Saved locally');
+      render();
+    }
+    function deleteRow(id) {
+      state.rows = state.rows.filter(r => r.id !== id);
+      saveCurrentSheet('Row deleted');
+      render();
+    }
+    function addRow() {
+      state.rows.unshift(blankRow());
+      saveCurrentSheet('Row added');
+      render();
+    }
+    function renderSummary() {
+      const rows = state.rows;
+      const finished18 = rows.filter(r => r.totalTime && holeCount(r) === 18);
+      const allWalk = finished18.filter(r => r.walkers === r.playerCount && r.playerCount > 0);
+      const allRide = finished18.filter(r => r.riders === r.playerCount && r.playerCount > 0);
+      const mixed = finished18.filter(r => r.walkers > 0 && r.riders > 0);
+      const totalGroups = rows.length;
+      const totalWalkers = rows.reduce((sum, r) => sum + (parseInt(r.walkers || 0, 10) || 0), 0);
+      const totalRiders = rows.reduce((sum, r) => sum + (parseInt(r.riders || 0, 10) || 0), 0);
+      const finishedWithTime = rows.filter(r => r.totalTime);
+      const durations = finishedWithTime.map(r => ({ row: r, mins: parseDurationToMinutes(r.totalTime) })).filter(x => x.mins !== null);
+      const fastest = durations.length ? formatDuration(Math.min(...durations.map(d => d.mins))) : '--';
+      const slowest = durations.length ? formatDuration(Math.max(...durations.map(d => d.mins))) : '--';
+      const avg = averageDuration(finished18);
+      const walkAvg = averageDuration(allWalk);
+      const rideAvg = averageDuration(allRide);
+      const mixedAvg = averageDuration(mixed);
+      const cards = [
+        ['Total Groups', totalGroups],
+        ['Total Walkers', totalWalkers],
+        ['Total Riders', totalRiders],
+        ['Fastest Round', fastest],
+        ['Slowest Round', slowest],
+        ['Average Pace', avg],
+        ['Walk Average', walkAvg],
+        ['Cart Average', rideAvg],
+        ['Mixed Average', mixedAvg],
+      ];
+      summaryGrid.innerHTML = cards.map(([label, value]) => `
+        <div class="summary-card">
+          <div class="summary-label">${label}</div>
+          <div class="summary-value">${value}</div>
+        </div>
+      `).join('');
+    }
+    function averageDuration(rows) {
+      const mins = rows
+        .map(r => parseDurationToMinutes(r.totalTime))
+        .filter(v => v !== null);
+      if (!mins.length) return '--';
+      const avg = Math.round(mins.reduce((a, b) => a + b, 0) / mins.length);
+      return formatDuration(avg);
+    }
+    function renderArchive() {
+      const archive = loadArchive();
+      loadArchiveEl.innerHTML = '<option value="">Select saved day</option>' + archive.map(item => {
+        return `<option value="${item.id}">${item.date} (${item.rows.length} groups)</option>`;
+      }).join('');
+      if (!archive.length) {
+        archiveList.innerHTML = '<div class="muted">No saved days yet.</div>';
+        return;
+      }
+      archiveList.innerHTML = archive.map(item => `
+        <div class="archive-item">
+          <div>
+            <div class="archive-title">${item.date}</div>
+            <div class="muted">${item.rows.length} groups saved on this device</div>
+          </div>
+          <div class="row-actions">
+            <button class="btn-secondary btn-small" onclick="loadSavedDay('${item.id}')">Load</button>
+            <button class="btn-danger btn-small" onclick="deleteSavedDay('${item.id}')">Delete</button>
+          </div>
+        </div>
+      `).join('');
+    }
+    function archiveCurrent() {
+      const archive = loadArchive();
+      const existingIndex = archive.findIndex(item => item.date === state.date);
+      const payload = JSON.parse(JSON.stringify(state));
+      const record = {
+        id: existingIndex >= 0 ? archive[existingIndex].id : crypto.randomUUID(),
+        date: payload.date,
+        rows: payload.rows,
+        savedAt: new Date().toISOString()
+      };
+      if (existingIndex >= 0) archive[existingIndex] = record;
+      else archive.unshift(record);
+      saveArchive(archive);
+      flashSaved('Saved day archived locally');
+    }
+    function loadSavedDay(id) {
+      const archive = loadArchive();
+      const item = archive.find(a => a.id === id);
+      if (!item) return;
+      state = JSON.parse(JSON.stringify(item));
+      saveCurrentSheet('Saved day loaded');
+      render();
+    }
+    function deleteSavedDay(id) {
+      const archive = loadArchive().filter(a => a.id !== id);
+      saveArchive(archive);
+      flashSaved('Saved day deleted');
+    }
+    function exportBackup() {
+      const payload = {
+        current: state,
+        archive: loadArchive(),
+        exportedAt: new Date().toISOString()
+      };
+      const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `tee-sheet-backup-${state.date || todayString()}.json`;
+      a.click();
+      URL.revokeObjectURL(url);
+    }
+    function importBackup(file) {
+      const reader = new FileReader();
+      reader.onload = () => {
+        try {
+          const data = JSON.parse(reader.result);
+          if (data.current) {
+            state = data.current;
+            localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+          }
+          if (Array.isArray(data.archive)) {
+            localStorage.setItem(ARCHIVE_KEY, JSON.stringify(data.archive));
+          }
+          render();
+          flashSaved('Backup imported');
+        } catch {
+          alert('Invalid backup file');
         }
+      };
+      reader.readAsText(file);
+    }
+    document.getElementById('addRowBtn').addEventListener('click', addRow);
+    document.getElementById('saveBtn').addEventListener('click', () => {
+      archiveCurrent();
+      saveCurrentSheet('Current tee sheet saved');
+    });
+    document.getElementById('newSheetBtn').addEventListener('click', () => {
+      state = { date: todayString(), rows: [] };
+      saveCurrentSheet('Started new blank sheet');
+      render();
+    });
+    document.getElementById('exportBtn').addEventListener('click', exportBackup);
+    document.getElementById('importBtn').addEventListener('click', () => importFileEl.click());
+    importFileEl.addEventListener('change', (e) => {
+      const file = e.target.files[0];
+      if (file) importBackup(file);
+      e.target.value = '';
+    });
+    document.getElementById('printBtn').addEventListener('click', () => window.print());
+    document.getElementById('clearBtn').addEventListener('click', () => {
+      state = { date: sheetDateEl.value || todayString(), rows: [] };
+      saveCurrentSheet('Current tee sheet deleted');
+      render();
+    });
+    sheetDateEl.addEventListener('change', () => {
+      state.date = sheetDateEl.value;
+      saveCurrentSheet('Date updated');
+    });
+    loadArchiveEl.addEventListener('change', () => {
+      if (loadArchiveEl.value) loadSavedDay(loadArchiveEl.value);
+    });
+    window.updateRow = updateRow;
+    window.normalizeTime = normalizeTime;
+    window.normalizeDuration = normalizeDuration;
+    window.toggleEdit = toggleEdit;
+    window.deleteRow = deleteRow;
+    window.loadSavedDay = loadSavedDay;
+    window.deleteSavedDay = deleteSavedDay;
+    if (!state || typeof state !== 'object') state = defaultState();
+    if (!state.date) state.date = todayString();
+    if (!Array.isArray(state.rows)) state.rows = [];
+    render();
+  </script>
 
-        if (window.location.hash) {
-            const el = document.querySelector(window.location.hash);
-            if (el) {
-                setTimeout(() => {
-                    el.scrollIntoView({ behavior: "smooth", block: "center" });
-                }, 100);
-            }
-        }
-
-        let lastVersion = null;
-        const isEditing = document.body.dataset.editing === "true";
-
-        async function checkForUpdates() {
-            try {
-                const response = await fetch("/api/version");
-                const data = await response.json();
-
-                if (lastVersion === null) {
-                    lastVersion = data.version;
-                    return;
-                }
-
-                if (data.version !== lastVersion) {
-                    window.location.reload();
-                }
-            } catch (error) {
-                console.error("Version check failed:", error);
-            }
-        }
-
-        function getBackOptions(frontValue) {
-            if (frontValue === "West") return ["East", "South"];
-            if (frontValue === "South") return ["East", "West"];
-            if (frontValue === "East") return ["West", "South"];
-            return [];
-        }
-
-        function updateBackOptions(frontSelect, backSelect) {
-            const currentValue = backSelect.dataset.current || backSelect.value || "";
-            const frontValue = frontSelect.value;
-            const options = getBackOptions(frontValue);
-
-            backSelect.innerHTML = '<option value=""></option>';
-
-            options.forEach(optionValue => {
-                const option = document.createElement("option");
-                option.value = optionValue;
-                option.textContent = optionValue;
-
-                if (optionValue === currentValue) {
-                    option.selected = true;
-                }
-
-                backSelect.appendChild(option);
-            });
-
-            if (!options.includes(currentValue)) {
-                backSelect.value = "";
-                backSelect.dataset.current = "";
-            }
-        }
-
-        document.querySelectorAll(".front-select").forEach(frontSelect => {
-            const row = frontSelect.closest("tr");
-            const backSelect = row.querySelector(".back-select");
-
-            if (backSelect) {
-                updateBackOptions(frontSelect, backSelect);
-
-                frontSelect.addEventListener("change", () => {
-                    backSelect.dataset.current = "";
-                    updateBackOptions(frontSelect, backSelect);
-                });
-            }
-        });
-
-        document.querySelectorAll(".total-time-input").forEach(input => {
-            input.addEventListener("blur", () => {
-                const digits = input.value.replace(/\D/g, "");
-
-                if (digits.length === 3) {
-                    input.value = `${digits[0]}:${digits.slice(1)}`;
-                } else if (digits.length === 4) {
-                    input.value = `${digits.slice(0, 2)}:${digits.slice(2)}`;
-                }
-            });
-        });
-
-        function formatReservationTimeInput(value, existingValue = "") {
-            const rawValue = (value || "").trim();
-            if (!rawValue) return "";
-
-            const normalized = rawValue.toUpperCase().replace(/\s+/g, " ");
-            const meridiemMatch = normalized.match(/\b(AM|PM)\b/);
-            let meridiem = meridiemMatch ? meridiemMatch[1] : "";
-
-            const digits = normalized.replace(/\D/g, "");
-            let hour = null;
-            let minute = null;
-
-            if (normalized.includes(":")) {
-                const timePart = normalized.split(" ")[0];
-                const parts = timePart.split(":");
-                if (parts.length === 2) {
-                    hour = parseInt(parts[0], 10);
-                    minute = parseInt(parts[1], 10);
-                }
-            } else if (digits.length === 3) {
-                hour = parseInt(digits[0], 10);
-                minute = parseInt(digits.slice(1), 10);
-            } else if (digits.length === 4) {
-                hour = parseInt(digits.slice(0, 2), 10);
-                minute = parseInt(digits.slice(2), 10);
-            }
-
-            if (Number.isNaN(hour) || Number.isNaN(minute) || minute < 0 || minute > 59) {
-                return rawValue;
-            }
-
-            if (!meridiem) {
-                const existingMatch = (existingValue || "").toUpperCase().match(/\b(AM|PM)\b/);
-                if (existingMatch) {
-                    meridiem = existingMatch[1];
-                } else if (hour === 12) {
-                    meridiem = "PM";
-                } else if (hour >= 1 && hour <= 6) {
-                    meridiem = "PM";
-                } else {
-                    meridiem = "AM";
-                }
-            }
-
-            if (hour === 0) {
-                hour = 12;
-                meridiem = meridiem || "AM";
-            } else if (hour > 12) {
-                if (hour <= 23) {
-                    hour -= 12;
-                    meridiem = meridiem || "PM";
-                } else {
-                    return rawValue;
-                }
-            }
-
-            if (hour < 1 || hour > 12) {
-                return rawValue;
-            }
-
-            return `${hour}:${String(minute).padStart(2, "0")} ${meridiem}`;
-        }
-
-        document.querySelectorAll(".time-input").forEach(input => {
-            input.dataset.originalValue = input.value;
-
-            input.addEventListener("blur", () => {
-                input.value = formatReservationTimeInput(input.value, input.dataset.originalValue || "");
-            });
-        });
-
-        document.querySelectorAll('form[action^="/save/"]').forEach(form => {
-            form.addEventListener("submit", () => {
-                const scrollInput = form.querySelector(".scroll-top-input");
-                if (scrollInput && bodyScroll) {
-                    scrollInput.value = bodyScroll.scrollTop;
-                }
-            });
-        });
-
-        window.addEventListener("load", () => {
-            const params = new URLSearchParams(window.location.search);
-            const scrollTop = params.get("scroll_top");
-
-            if (scrollTop !== null && bodyScroll) {
-                bodyScroll.scrollTop = parseInt(scrollTop, 10) || 0;
-            }
-        });
-    </script>
+  <script>
+    if ("serviceWorker" in navigator) {
+      window.addEventListener("load", () => {
+        navigator.serviceWorker.register("/service-worker.js")
+          .then((registration) => console.log("Service worker registered:", registration.scope))
+          .catch((error) => console.error("Service worker registration failed:", error));
+      });
+    }
+  </script>
 </body>
 </html>
