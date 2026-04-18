@@ -1190,9 +1190,8 @@ def extract_pdf_text(path):
 
     time_only_pattern = re.compile(r"^\d{2}:\d{2}\s[AP]M$")
     inline_time_pattern = re.compile(r"^(\d{2}:\d{2}\s[AP]M)\b")
-
-    full_name_pattern = re.compile(r"^([A-Za-z'`\- ]+),\s*([A-Za-z'`\- ]+)")
-    inline_full_name_pattern = re.compile(r"([A-Za-z'`\- ]+),\s*([A-Za-z'`\- ]+)")
+    last_name_pattern = re.compile(r"^([A-Za-z'\- ]+),\s")
+    inline_last_name_pattern = re.compile(r"([A-Za-z'\- ]+),\s+[A-Za-z]")
 
     with fitz.open(path) as doc:
         lines = []
@@ -1214,7 +1213,7 @@ def extract_pdf_text(path):
                 i += 1
                 continue
 
-            player_names = []
+            player_last_names = []
 
             while i < len(lines):
                 current = lines[i]
@@ -1225,21 +1224,18 @@ def extract_pdf_text(path):
                 if inline_time_pattern.match(current):
                     break
 
-                name_match = full_name_pattern.match(current)
+                name_match = last_name_pattern.match(current)
                 if name_match:
-                    last = name_match.group(1).strip()
-                    first = name_match.group(2).strip()
-                    full_name = f"{first} {last}"
-                    player_names.append(full_name)
+                    player_last_names.append(name_match.group(1).strip())
 
                 i += 1
 
-            if player_names:
+            if player_last_names:
                 rows.append({
                     "reservation_time": reservation_time,
-                    "group_name": f"{player_names[0].split()[-1]} Group",
-                    "players": ", ".join(player_names),
-                    "num_players": str(len(player_names)),
+                    "group_name": f"{player_last_names[0]} Group",
+                    "players": ", ".join(player_last_names),
+                    "num_players": str(len(player_last_names)),
                     "walkers": "",
                     "riders": "",
                     "group_type": "",
@@ -1259,19 +1255,16 @@ def extract_pdf_text(path):
                 i += 1
                 continue
 
-            inline_names = []
-            for match in inline_full_name_pattern.finditer(line):
-                last = match.group(1).strip()
-                first = match.group(2).strip()
-                full_name = f"{first} {last}"
-                inline_names.append(full_name)
+            inline_last_names = []
+            for match in inline_last_name_pattern.finditer(line):
+                inline_last_names.append(match.group(1).strip())
 
-            if inline_names:
+            if inline_last_names:
                 rows.append({
                     "reservation_time": reservation_time,
-                    "group_name": f"{inline_names[0].split()[-1]} Group",
-                    "players": ", ".join(inline_names),
-                    "num_players": str(len(inline_names)),
+                    "group_name": f"{inline_last_names[0]} Group",
+                    "players": ", ".join(inline_last_names),
+                    "num_players": str(len(inline_last_names)),
                     "walkers": "",
                     "riders": "",
                     "group_type": "",
@@ -1285,7 +1278,6 @@ def extract_pdf_text(path):
         i += 1
 
     return rows
-
 
 # ---------------- ROUTES ----------------
 @app.route("/archive/delete/<int:record_id>", methods=["POST"])
